@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Telegram Music Cloud</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f0f0f;
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+        }
+
+        /* ---------- HEADER ---------- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background-color: #1a1a1a;
+            border-bottom: 1px solid #333;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .search-box input {
+            padding: 8px 12px;
+            width: 260px;
+            border: none;
+            background-color: #222;
+            color: white;
+            border-radius: 6px;
+        }
+
+        /* ---------- GRID ---------- */
+        .layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        /* ---------- SONG LIST ---------- */
+        .songs-container {
+            background-color: #121212;
+            height: 600px;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .track-header,
+        .track-item {
+            display: grid;
+            grid-template-columns: 40px 1.5fr 1fr 60px;
+            padding: 10px;
+            align-items: center;
+        }
+
+        .track-header {
+            color: #aaa;
+            border-bottom: 1px solid #333;
+            font-size: 14px;
+        }
+
+        .track-item {
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .track-item:hover {
+            background: #1b1b1b;
+        }
+
+        .track-info {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .track-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .track-artist {
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .play-btn {
+            background: none;
+            border: 1px solid #555;
+            padding: 4px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+        }
+
+        /* ---------- NOW PLAYING ---------- */
+        .now-playing {
+            background-color: #1c1c1c;
+            padding: 20px;
+            height: 600px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="header">
+    <div class="header-title">Telegram Music Cloud</div>
+    <div class="search-box">
+        <input type="text" placeholder="Поиск...">
+    </div>
+</div>
+
+<div class="layout">
+
+    <!-- TRACK LIST -->
+    <div class="songs-container">
+        <div class="track-header">
+            <span>#</span>
+            <span>Название</span>
+            <span>Исполнитель</span>
+            <span></span>
+        </div>
+
+        <div id="track-list"></div>
+    </div>
+
+    <!-- PLAYER -->
+    <div class="now-playing">
+        <h3>Сейчас играет:</h3>
+        <p id="playing-title">Ничего</p>
+        <audio id="audio-player" controls style="width: 100%; margin-top: 20px;"></audio>
+    </div>
+
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // растягиваем миниапп
+
+    const userId = tg.initDataUnsafe?.user?.id;
+    const apiBase = "/api";
+
+    const trackListDiv = document.getElementById("track-list");
+    const audio = document.getElementById("audio-player");
+    const nowPlaying = document.getElementById("playing-title");
+
+    // ← Загрузка треков
+    async function loadTracks() {
+        const response = await fetch(`${apiBase}/tracks/${userId}`);
+        const tracks = await response.json();
+
+        trackListDiv.innerHTML = "";
+
+        tracks.forEach((t, index) => {
+            const item = document.createElement("div");
+            item.className = "track-item";
+
+            item.innerHTML = `
+                <span>${index + 1}</span>
+                <div>
+                    <div class="track-title">${t.originalName}</div>
+                    <div class="track-artist">${t.performer || "Unknown"}</div>
+                </div>
+                <span>${t.performer || ""}</span>
+                <button class="play-btn" onclick="playTrack(${t.id}, '${t.originalName}')">▶</button>
+            `;
+
+            trackListDiv.appendChild(item);
+        });
+    }
+
+    // ← Проигрывание трека
+    function playTrack(id, name) {
+        audio.src = `${apiBase}/tracks/file/${id}`;
+        audio.play();
+        nowPlaying.innerText = name;
+    }
+
+    loadTracks();
+</script>
+
+</body>
+</html>
