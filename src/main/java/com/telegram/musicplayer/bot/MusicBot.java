@@ -27,7 +27,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.File;                 // ✅ оставили только этот File
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URL;
@@ -59,11 +59,19 @@ public class MusicBot extends TelegramLongPollingBot {
         if (update.hasMessage()) {
             Message msg = update.getMessage();
 
+            // ---------- Mini App кнопка ----------
+            if (msg.hasText() && msg.getText().equals("/app")) {
+                sendMiniAppButton(msg.getChatId());
+                return;
+            }
+
+            // ---------- Загрузка трека ----------
             if (msg.hasAudio() || msg.hasDocument()) {
                 handleAudio(msg);
                 return;
             }
 
+            // ---------- Список треков ----------
             if (msg.hasText() && msg.getText().equals("/tracks")) {
                 sendTrackList(msg.getChatId(), msg.getFrom().getId());
             }
@@ -74,8 +82,31 @@ public class MusicBot extends TelegramLongPollingBot {
         }
     }
 
-    // ---------------- Обработка загрузки -------------------
+    // ---------------- Mini App кнопка -------------------
+    private void sendMiniAppButton(Long chatId) {
+        InlineKeyboardButton webAppBtn = new InlineKeyboardButton();
+        webAppBtn.setText("🎧 Открыть плеер");
+       webAppBtn.setUrl("https://stands-creative-survive-installations.trycloudflare.com/miniapp");
 
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup(
+                List.of(List.of(webAppBtn))
+        );
+
+        try {
+            execute(
+                    SendMessage.builder()
+                            .chatId(chatId.toString())
+                            .text("Открываю плеер 🎵")
+                            .replyMarkup(markup)
+                            .build()
+            );
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ---------------- Обработка загрузки -------------------
     private void handleAudio(Message msg) {
 
         Long telegramId = msg.getFrom().getId();
@@ -122,7 +153,6 @@ public class MusicBot extends TelegramLongPollingBot {
     }
 
     // ---------------- Список треков -------------------
-
     private void sendTrackList(Long chatId, Long telegramId) {
         List<Track> tracks = trackService.getTracksByUser(telegramId);
 
@@ -166,7 +196,6 @@ public class MusicBot extends TelegramLongPollingBot {
     }
 
     // ---------------- Callback кнопки -------------------
-
     private void handleCallback(CallbackQuery cb) {
         String data = cb.getData();
         Long chatId = cb.getMessage().getChatId();
@@ -183,7 +212,6 @@ public class MusicBot extends TelegramLongPollingBot {
     }
 
     // ---------------- Проигрывание трека -------------------
-
     private void playTrack(Long chatId, Long trackId) {
         Track t = trackService.getTrack(trackId);
 
@@ -200,10 +228,8 @@ public class MusicBot extends TelegramLongPollingBot {
     }
 
     // ---------------- Удаление -------------------
-
     private void deleteTrack(Long chatId, Long trackId) {
         trackService.deleteTrack(trackId);
         sendText(chatId, "❌ Трек удалён.");
     }
-    
 }

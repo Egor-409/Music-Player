@@ -8,6 +8,7 @@ public class MiniAppController {
 
     @GetMapping("/miniapp")
     public String miniApp() {
-        return "redirect:/miniapp/index.html";
+        // forward вместо redirect
+        return "forward:/miniapp/index.html";
     }
 }

@@ -31,3 +31,15 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# macOS
+.DS_Store
+
+# uploads (music files)
+uploads/
+
+# logs
+*.log
+
+# target
+/target/
