@@ -71,6 +71,13 @@
     <version>6.9.0</version>
 </dependency>
 
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <scope>runtime</scope>
+</dependency>
+
+
 <!-- Optional: Extensions (не строго нужно, но лучше иметь) -->
 <dependency>
     <groupId>org.telegram</groupId>
