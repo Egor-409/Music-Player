@@ -9,6 +9,6 @@ public class MiniAppController {
     @GetMapping("/miniapp")
     public String miniApp() {
         // forward вместо redirect
-        return "forward:/miniapp/index.html";
+        return "https://telegram-music-player-uh5o.onrender.com/miniapp";
     }
 }

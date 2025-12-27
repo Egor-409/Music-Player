@@ -86,7 +86,7 @@ public class MusicBot extends TelegramLongPollingBot {
     private void sendMiniAppButton(Long chatId) {
         InlineKeyboardButton webAppBtn = new InlineKeyboardButton();
         webAppBtn.setText("🎧 Открыть плеер");
-       webAppBtn.setUrl("https://stands-creative-survive-installations.trycloudflare.com/miniapp");
+       webAppBtn.setUrl("https://telegram-music-player-uh5o.onrender.com/miniapp/");
 
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup(
