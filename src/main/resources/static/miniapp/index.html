@@ -220,12 +220,20 @@
     <div class="mini-title" id="mini-title">Ничего</div>
     <button class="mini-btn" id="mini-btn">⏯</button>
 </div>
-
 <script>
     const tg = window.Telegram.WebApp;
+
+    tg.ready();
     tg.expand();
 
-    const initData = tg.initData; // 🔥 ВАЖНО
+    // 🚨 защита: мини-апп открыт НЕ в Telegram
+    if (!tg.initData) {
+        document.body.innerHTML =
+            "<h3 style='color:white;padding:20px'>Откройте мини-апп через Telegram</h3>";
+        throw new Error("Mini App not opened inside Telegram");
+    }
+
+    const initData = tg.initData;
     const apiBase = "/api";
 
     const trackListDiv = document.getElementById("track-list");
@@ -234,7 +242,6 @@
     const miniTitle = document.getElementById("mini-title");
     const miniBtn = document.getElementById("mini-btn");
 
-    // ----- Загрузка треков -----
     async function loadTracks() {
         const response = await fetch(`${apiBase}/tracks`, {
             headers: {
@@ -260,7 +267,7 @@
                     <div class="track-title">${t.originalName}</div>
                     <div class="track-artist">${t.performer || "Unknown"}</div>
                 </div>
-                <span>${t.performer || ""}</span>
+                <span></span>
                 <button class="play-btn">▶</button>
             `;
 
@@ -272,7 +279,6 @@
         });
     }
 
-    // ----- Проигрывание трека -----
     function playTrack(id, name) {
         audio.src = `${apiBase}/tracks/file/${id}`;
         audio.play();
@@ -282,7 +288,6 @@
         miniBtn.innerText = "⏸";
     }
 
-    // ----- Mini player button -----
     miniBtn.onclick = () => {
         if (audio.paused) {
             audio.play();
@@ -295,6 +300,7 @@
 
     loadTracks();
 </script>
+
 
 
 </body>

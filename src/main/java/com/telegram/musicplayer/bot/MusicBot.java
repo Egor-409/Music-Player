@@ -32,6 +32,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
+import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
+
 
 @Slf4j
 @Component
@@ -83,29 +85,32 @@ public class MusicBot extends TelegramLongPollingBot {
     }
 
     // ---------------- Mini App кнопка -------------------
-    private void sendMiniAppButton(Long chatId) {
-        InlineKeyboardButton webAppBtn = new InlineKeyboardButton();
-        webAppBtn.setText("🎧 Открыть плеер");
-       webAppBtn.setUrl("https://telegram-music-player-uh5o.onrender.com/miniapp");
+private void sendMiniAppButton(Long chatId) {
 
+    InlineKeyboardButton webAppBtn = new InlineKeyboardButton();
+    webAppBtn.setText("🎧 Открыть плеер");
 
-        InlineKeyboardMarkup markup = new InlineKeyboardMarkup(
-                List.of(List.of(webAppBtn))
+    WebAppInfo webAppInfo = new WebAppInfo();
+    webAppInfo.setUrl("https://telegram-music-player-uh5o.onrender.com/miniapp");
+
+    webAppBtn.setWebApp(webAppInfo);
+
+    InlineKeyboardMarkup markup = new InlineKeyboardMarkup(
+            List.of(List.of(webAppBtn))
+    );
+
+    try {
+        execute(
+                SendMessage.builder()
+                        .chatId(chatId.toString())
+                        .text("Открываю плеер 🎵")
+                        .replyMarkup(markup)
+                        .build()
         );
-
-        try {
-            execute(
-                    SendMessage.builder()
-                            .chatId(chatId.toString())
-                            .text("Открываю плеер 🎵")
-                            .replyMarkup(markup)
-                            .build()
-            );
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
+    } catch (TelegramApiException e) {
+        e.printStackTrace();
     }
-
+}
     // ---------------- Обработка загрузки -------------------
     private void handleAudio(Message msg) {
 
