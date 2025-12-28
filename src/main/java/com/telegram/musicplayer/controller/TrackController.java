@@ -39,7 +39,7 @@ public class TrackController {
     public List<Track> getTracksForMiniApp(
             @RequestHeader("X-TG-INIT-DATA") String initData
     ) {
-        TelegramUser user = telegramAuthService.parse(initData);
+        TelegramUser user = telegramAuthService.parseAndValidate(initData);
         return trackService.getTracksByUser(user.getId());
     }
 
