@@ -226,7 +226,6 @@
     tg.ready();
     tg.expand();
 
-    // 🚨 защита: мини-апп открыт НЕ в Telegram
     if (!tg.initData) {
         document.body.innerHTML =
             "<h3 style='color:white;padding:20px'>Откройте мини-апп через Telegram</h3>";
@@ -234,7 +233,7 @@
     }
 
     const initData = tg.initData;
-    const apiBase = "/api";
+    const apiBase = "https://telegram-music-player-uh5o.onrender.com/api";
 
     const trackListDiv = document.getElementById("track-list");
     const audio = document.getElementById("audio-player");
@@ -300,6 +299,7 @@
 
     loadTracks();
 </script>
+
 
 
 
