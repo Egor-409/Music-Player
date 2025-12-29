@@ -56,6 +56,7 @@ public class TrackService {
 
     // ---------- ТРЕКИ ПОЛЬЗОВАТЕЛЯ ----------
     public List<Track> getTracksByUser(Long userId) {
+        System.out.println("FETCH TRACKS FOR USER ID = " + userId);
         return trackRepository.findByUser_Id(userId);
     }
 
