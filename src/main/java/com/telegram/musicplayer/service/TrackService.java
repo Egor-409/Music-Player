@@ -22,14 +22,17 @@ public class TrackService {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    // ---------- СОХРАНЕНИЕ ТРЕКА ----------
-    public Track saveTrack(Long telegramUserId, String originalName, String filename, String telegramFileId) {
+    // ---------- СОХРАНЕНИЕ ----------
+    public Track saveTrack(Long telegramUserId,
+                           String originalName,
+                           String filename,
+                           String telegramFileId) {
 
         User user = userRepository.findById(telegramUserId)
                 .orElseGet(() -> {
-                    User newUser = new User();
-                    newUser.setId(telegramUserId);
-                    return userRepository.save(newUser);
+                    User u = new User();
+                    u.setId(telegramUserId);
+                    return userRepository.save(u);
                 });
 
         Track track = new Track();
@@ -41,22 +44,21 @@ public class TrackService {
         return trackRepository.save(track);
     }
 
-    // ---------- ПОЛУЧИТЬ ТРЕК ----------
+    // ---------- ПОЛУЧИТЬ ОДИН ----------
     public Track getTrack(Long id) {
         return trackRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Track not found"));
     }
 
-    // ---------- ПУТЬ К ФАЙЛУ ----------
+    // ---------- ФАЙЛ ----------
     public Path resolveTrackPath(Track track) {
         return Paths.get(uploadDir)
                 .resolve(track.getFilename())
                 .normalize();
     }
 
-    // ---------- ТРЕКИ ПОЛЬЗОВАТЕЛЯ ----------
+    // ---------- ВСЕ ТРЕКИ ПОЛЬЗОВАТЕЛЯ ----------
     public List<Track> getTracksByUser(Long userId) {
-        System.out.println("FETCH TRACKS FOR USER ID = " + userId);
         return trackRepository.findByUser_Id(userId);
     }
 

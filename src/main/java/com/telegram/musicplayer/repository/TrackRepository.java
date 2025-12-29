@@ -7,7 +7,9 @@ import java.util.List;
 
 public interface TrackRepository extends JpaRepository<Track, Long> {
 
+    // ВАЖНО: именно User_Id, а не UserId
     List<Track> findByUser_Id(Long userId);
 
 }
+
 

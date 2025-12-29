@@ -31,6 +31,8 @@ public class TrackController {
             @RequestParam String filename,
             @RequestParam String telegramFileId
     ) {
+        System.out.println("UPLOAD TRACK: userId=" + userId + ", file=" + originalName);
+
         return trackService.saveTrack(userId, originalName, filename, telegramFileId);
     }
 
@@ -39,13 +41,25 @@ public class TrackController {
     public List<Track> getTracksForMiniApp(
             @RequestHeader("X-TG-INIT-DATA") String initData
     ) {
+        System.out.println("MINI APP REQUEST RECEIVED");
+        System.out.println("INIT DATA = " + initData);
+
         TelegramUser user = telegramAuthService.parseAndValidate(initData);
-        return trackService.getTracksByUser(user.getId());
+
+        System.out.println("MINI APP USER ID = " + user.getId());
+
+        List<Track> tracks = trackService.getTracksByUser(user.getId());
+
+        System.out.println("TRACKS FOUND = " + tracks.size());
+
+        return tracks;
     }
 
     // ===================== АДМИН / БОТ =====================
     @GetMapping("/user/{userId}")
     public List<Track> getTracksByUserId(@PathVariable Long userId) {
+        System.out.println("ADMIN REQUEST USER ID = " + userId);
+
         return trackService.getTracksByUser(userId);
     }
 
@@ -53,12 +67,15 @@ public class TrackController {
     @GetMapping("/file/{trackId}")
     public ResponseEntity<Resource> getTrackFile(@PathVariable Long trackId) {
         try {
+            System.out.println("GET TRACK FILE ID = " + trackId);
+
             Track track = trackService.getTrack(trackId);
             Path path = trackService.resolveTrackPath(track);
 
             Resource resource = new UrlResource(path.toUri());
 
             if (!resource.exists()) {
+                System.out.println("FILE NOT FOUND: " + path);
                 return ResponseEntity.notFound().build();
             }
 
@@ -79,8 +96,9 @@ public class TrackController {
     // ===================== УДАЛЕНИЕ =====================
     @DeleteMapping("/{trackId}")
     public ResponseEntity<Void> deleteTrack(@PathVariable Long trackId) {
+        System.out.println("DELETE TRACK ID = " + trackId);
+
         trackService.deleteTrack(trackId);
         return ResponseEntity.noContent().build();
     }
-    
 }
