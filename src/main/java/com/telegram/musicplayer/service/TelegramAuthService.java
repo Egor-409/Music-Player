@@ -25,7 +25,6 @@ public class TelegramAuthService {
 
     public TelegramUser parseAndValidate(String initData) {
         try {
-            // 1️⃣ Парсим initData в Map
             Map<String, String> data = Arrays.stream(initData.split("&"))
                     .map(p -> p.split("=", 2))
                     .collect(Collectors.toMap(
@@ -33,24 +32,27 @@ public class TelegramAuthService {
                             p -> URLDecoder.decode(p[1], StandardCharsets.UTF_8)
                     ));
 
-            // 2️⃣ Забираем hash
+            // ✅ Забираем hash
             String hash = data.remove("hash");
+
+            // ❗️ОЧЕНЬ ВАЖНО — УДАЛЯЕМ signature
+            data.remove("signature");
+
             if (hash == null) {
                 throw new RuntimeException("Hash is missing");
             }
 
-            // 3️⃣ Формируем data_check_string
+            // ✅ data_check_string
             String dataCheckString = data.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining("\n"));
 
-            // 4️⃣ secret_key = SHA256(botToken)
+            // ✅ secret_key = SHA256(botToken)
             byte[] secretKey = MessageDigest
                     .getInstance("SHA-256")
                     .digest(botToken.getBytes(StandardCharsets.UTF_8));
 
-            // 5️⃣ HMAC-SHA256
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
             byte[] calculatedHash = mac.doFinal(
@@ -63,12 +65,8 @@ public class TelegramAuthService {
                 throw new RuntimeException("Invalid Telegram hash");
             }
 
-            // 6️⃣ Парсим user
+            // ✅ Парсим user
             String userJson = data.get("user");
-            if (userJson == null) {
-                throw new RuntimeException("User data missing");
-            }
-
             Map<String, Object> userMap =
                     objectMapper.readValue(userJson, Map.class);
 
