@@ -56,7 +56,7 @@ public class TrackService {
 
     // ---------- ТРЕКИ ПОЛЬЗОВАТЕЛЯ ----------
     public List<Track> getTracksByUser(Long userId) {
-        return trackRepository.findByUserId(userId);
+        return trackRepository.findByUser_Id(userId);
     }
 
     // ---------- УДАЛЕНИЕ ----------
