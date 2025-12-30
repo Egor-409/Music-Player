@@ -221,10 +221,7 @@
     <button class="mini-btn" id="mini-btn">⏯</button>
 </div>
 <script>
-    console.log(window.location.href)
-
     const tg = window.Telegram.WebApp;
-
     tg.ready();
     tg.expand();
 
@@ -235,7 +232,7 @@
     }
 
     const initData = tg.initData;
-    const apiBase = "https://telegram-music-player-uh5o.onrender.com/api";
+    const apiBase = "https://telegram-music-player-uh5o.onrender.com";
 
     const trackListDiv = document.getElementById("track-list");
     const audio = document.getElementById("audio-player");
@@ -243,8 +240,10 @@
     const miniTitle = document.getElementById("mini-title");
     const miniBtn = document.getElementById("mini-btn");
 
+    audio.preload = "none"; // 🔥 важно для Render
+
     async function loadTracks() {
-        const response = await fetch(`${apiBase}/tracks`, {
+        const response = await fetch(`${apiBase}/api/tracks`, {
             headers: {
                 "X-TG-INIT-DATA": initData
             }
@@ -281,8 +280,13 @@
     }
 
     function playTrack(id, name) {
-        audio.src = `${apiBase}/tracks/file/${id}`;
-        audio.play();
+        audio.pause();
+        audio.src = `${apiBase}/tracks/stream/${id}`;
+        audio.load();
+
+        audio.play().catch(e => {
+            console.error("Ошибка воспроизведения", e);
+        });
 
         nowPlaying.innerText = name;
         miniTitle.innerText = name;
