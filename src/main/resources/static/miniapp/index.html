@@ -41,7 +41,7 @@
             border-radius: 6px;
         }
 
-        /* ---------- GRID (DESKTOP) ---------- */
+        /* ---------- LAYOUT ---------- */
         .layout {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -58,21 +58,35 @@
             overflow-y: auto;
         }
 
-        .track-header,
+        /* ---------- TOP MENU ---------- */
+        .library-menu {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .menu-btn {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .menu-btn.active {
+            background: #ffffff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        /* ---------- TRACK ITEM ---------- */
         .track-item {
             display: grid;
-            grid-template-columns: 30px 1.5fr 1fr 50px;
-            padding: 10px;
+            grid-template-columns: 30px 1fr auto;
             align-items: center;
-        }
-
-        .track-header {
-            color: #aaa;
-            border-bottom: 1px solid #333;
-            font-size: 13px;
-        }
-
-        .track-item {
+            padding: 10px;
             border-radius: 8px;
             transition: background 0.2s;
         }
@@ -91,23 +105,55 @@
             color: #aaa;
         }
 
-        .play-btn {
-            background: none;
-            border: 1px solid #555;
-            padding: 4px 8px;
-            border-radius: 5px;
-            cursor: pointer;
-            color: white;
+        .track-actions {
+            display: flex;
+            gap: 8px;
         }
 
-        /* ---------- PLAYER (DESKTOP) ---------- */
+        .play-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: none;
+            border: 1px solid #555;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        .more-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .more-btn:hover {
+            background: #2a2a2a;
+            color: #fff;
+        }
+
+        /* ---------- PLAYER ---------- */
         .now-playing {
             background-color: #1c1c1c;
             padding: 20px;
             border-radius: 10px;
         }
 
-        /* ---------- MINI PLAYER (MOBILE) ---------- */
+        /* ---------- MINI PLAYER ---------- */
         .mini-player {
             display: none;
         }
@@ -118,12 +164,10 @@
                 overflow-y: auto;
             }
 
-            /* скрываем десктопный плеер */
             .now-playing {
                 display: none;
             }
 
-            /* один столбец */
             .layout {
                 grid-template-columns: 1fr;
                 padding: 10px;
@@ -136,7 +180,6 @@
                 overflow-y: scroll;
             }
 
-            /* мини-плеер снизу */
             .mini-player {
                 display: flex;
                 position: fixed;
@@ -148,7 +191,6 @@
                 border-top: 1px solid #333;
                 align-items: center;
                 padding: 10px 15px;
-                box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
                 z-index: 999;
             }
 
@@ -160,7 +202,7 @@
             }
 
             #audio-player {
-                display: none; /* прячем стандартный плеер */
+                display: none;
             }
 
             .mini-btn {
@@ -173,13 +215,6 @@
                 height: 40px;
             }
         }
-
-        /* SMALL TELEGRAM WINDOW */
-        @media (max-width: 430px) {
-            .header-title { font-size: 16px; }
-            .search-box input { width: 120px; }
-        }
-
     </style>
 </head>
 
@@ -194,32 +229,29 @@
 
 <div class="layout">
 
-    <!-- TRACK LIST -->
     <div class="songs-container">
-        <div class="track-header">
-            <span>#</span>
-            <span>Название</span>
-            <span>Исполнитель</span>
-            <span></span>
+
+        <div class="library-menu">
+            <button class="menu-btn active">🎵 Библиотека</button>
+            <button class="menu-btn">📂 Плейлисты</button>
         </div>
 
         <div id="track-list"></div>
     </div>
 
-    <!-- DESKTOP PLAYER -->
     <div class="now-playing">
         <h3>Сейчас играет:</h3>
         <p id="playing-title">Ничего</p>
-        <audio id="audio-player" controls style="width: 100%; margin-top: 20px;"></audio>
+        <audio id="audio-player" controls style="width:100%; margin-top:20px;"></audio>
     </div>
 
 </div>
 
-<!-- MOBILE MINI PLAYER -->
 <div class="mini-player">
     <div class="mini-title" id="mini-title">Ничего</div>
     <button class="mini-btn" id="mini-btn">⏯</button>
 </div>
+
 <script>
     const tg = window.Telegram.WebApp;
     tg.ready();
@@ -240,19 +272,14 @@
     const miniTitle = document.getElementById("mini-title");
     const miniBtn = document.getElementById("mini-btn");
 
-    audio.preload = "none"; // 🔥 важно для Render
+    audio.preload = "none";
 
     async function loadTracks() {
         const response = await fetch(`${apiBase}/api/tracks`, {
-            headers: {
-                "X-TG-INIT-DATA": initData
-            }
+            headers: { "X-TG-INIT-DATA": initData }
         });
 
-        if (!response.ok) {
-            console.error("Ошибка загрузки треков");
-            return;
-        }
+        if (!response.ok) return;
 
         const tracks = await response.json();
         trackListDiv.innerHTML = "";
@@ -267,8 +294,10 @@
                     <div class="track-title">${t.originalName}</div>
                     <div class="track-artist">${t.performer || "Unknown"}</div>
                 </div>
-                <span></span>
-                <button class="play-btn">▶</button>
+                <div class="track-actions">
+                    <button class="play-btn">▶</button>
+                    <button class="more-btn">⋮</button>
+                </div>
             `;
 
             item.querySelector(".play-btn").onclick = () => {
@@ -283,10 +312,7 @@
         audio.pause();
         audio.src = `${apiBase}/tracks/stream/${id}`;
         audio.load();
-
-        audio.play().catch(e => {
-            console.error("Ошибка воспроизведения", e);
-        });
+        audio.play();
 
         nowPlaying.innerText = name;
         miniTitle.innerText = name;
@@ -305,9 +331,6 @@
 
     loadTracks();
 </script>
-
-
-
 
 </body>
 </html>
