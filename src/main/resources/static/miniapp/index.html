@@ -7,9 +7,9 @@
 
 <style>
 body {
-    margin: 0;
+    margin:0;
     background:#0f0f0f;
-    font-family: Arial, sans-serif;
+    font-family:Arial,sans-serif;
     color:#fff;
 }
 
@@ -33,9 +33,28 @@ body {
 
 /* LAYOUT */
 .layout {
-    display:grid;
-    grid-template-columns:1fr;
     padding:15px;
+}
+
+/* LIBRARY MENU */
+.library-menu {
+    display:flex;
+    gap:10px;
+    margin-bottom:15px;
+}
+.menu-btn {
+    background:#1e1e1e;
+    border:1px solid #333;
+    color:#aaa;
+    padding:8px 16px;
+    border-radius:20px;
+    cursor:pointer;
+    font-size:14px;
+}
+.menu-btn.active {
+    background:#fff;
+    color:#000;
+    border-color:#fff;
 }
 
 /* TRACK LIST */
@@ -52,7 +71,6 @@ body {
     border-radius:8px;
 }
 .track-item:hover { background:#1b1b1b; }
-
 .track-title { font-size:14px; font-weight:600; }
 .track-artist { font-size:12px; color:#aaa; }
 
@@ -77,7 +95,6 @@ body {
     padding:10px 15px;
     z-index:999;
 }
-
 .mini-title {
     font-size:14px;
     font-weight:600;
@@ -129,6 +146,13 @@ body {
 
 <div class="layout">
     <div class="songs-container">
+
+        <!-- ВЕРНУЛ МЕНЮ -->
+        <div class="library-menu">
+            <button class="menu-btn active">🎵 Библиотека</button>
+            <button class="menu-btn">📂 Плейлисты</button>
+        </div>
+
         <div id="track-list"></div>
     </div>
 </div>
@@ -174,7 +198,6 @@ let currentIndex = -1;
 
 audio.preload = "none";
 
-/* LOAD TRACKS */
 async function loadTracks() {
     const r = await fetch(`${apiBase}/api/tracks`, {
         headers:{ "X-TG-INIT-DATA": initData }
@@ -198,7 +221,6 @@ async function loadTracks() {
     });
 }
 
-/* PLAY */
 function playTrack(index){
     currentIndex = index;
     audio.src = `${apiBase}/tracks/stream/${tracks[index].id}`;
@@ -207,23 +229,18 @@ function playTrack(index){
     playBtn.innerText = "⏸";
 }
 
-/* CONTROLS */
 playBtn.onclick=()=>{
     if(audio.paused){ audio.play(); playBtn.innerText="⏸"; }
     else { audio.pause(); playBtn.innerText="▶"; }
 };
-
 nextBtn.onclick=()=>{
     if(currentIndex < tracks.length-1) playTrack(currentIndex+1);
 };
-
 prevBtn.onclick=()=>{
     if(currentIndex > 0) playTrack(currentIndex-1);
 };
-
 audio.onended=()=> nextBtn.click();
 
-/* PROGRESS */
 audio.ontimeupdate=()=>{
     progress.value = (audio.currentTime/audio.duration)*100 || 0;
     currentTimeEl.innerText = format(audio.currentTime);
@@ -231,11 +248,9 @@ audio.ontimeupdate=()=>{
 audio.onloadedmetadata=()=>{
     durationEl.innerText = format(audio.duration);
 };
-
 progress.oninput=()=>{
     audio.currentTime = (progress.value/100)*audio.duration;
 };
-
 function format(t){
     if(!t) return "0:00";
     const m=Math.floor(t/60);
