@@ -189,7 +189,7 @@ const miniPlayer = document.getElementById("mini-player");
 
 let tracks = [];
 let currentIndex = -1;
-let seeking = false;
+let isDragging = false;
 
 async function loadTracks() {
     const r = await fetch(`${apiBase}/api/tracks`, {
@@ -244,22 +244,35 @@ audio.onloadedmetadata = () => {
 };
 
 audio.ontimeupdate = () => {
-    if (!seeking && isFinite(audio.currentTime)) {
+    if (!isDragging && isFinite(audio.currentTime)) {
         progress.value = audio.currentTime;
         currentEl.innerText = format(audio.currentTime);
     }
 };
 
+/* ===== ПРАВИЛЬНАЯ ПЕРЕМОТКА ===== */
+
+progress.addEventListener("pointerdown", () => {
+    isDragging = true;
+});
+
 progress.addEventListener("input", () => {
-    seeking = true;
     currentEl.innerText = format(progress.value);
 });
 
-progress.addEventListener("change", () => {
+progress.addEventListener("pointerup", () => {
     if (isFinite(audio.duration)) {
         audio.currentTime = progress.value;
     }
-    seeking = false;
+    isDragging = false;
+});
+
+/* fallback для старых браузеров */
+progress.addEventListener("change", () => {
+    if (isDragging && isFinite(audio.duration)) {
+        audio.currentTime = progress.value;
+        isDragging = false;
+    }
 });
 
 function format(t){
@@ -271,6 +284,7 @@ function format(t){
 
 loadTracks();
 </script>
+
 
 </body>
 </html>
