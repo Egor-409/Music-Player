@@ -12,8 +12,6 @@ body {
     font-family:Arial,sans-serif;
     color:#fff;
 }
-
-/* HEADER */
 .header {
     display:flex;
     justify-content:space-between;
@@ -30,11 +28,7 @@ body {
     background:#222;
     color:#fff;
 }
-
-/* LAYOUT */
 .layout { padding:15px; }
-
-/* LIBRARY MENU */
 .library-menu {
     display:flex;
     gap:10px;
@@ -46,14 +40,11 @@ body {
     color:#aaa;
     padding:8px 16px;
     border-radius:20px;
-    cursor:pointer;
 }
 .menu-btn.active {
     background:#fff;
     color:#000;
 }
-
-/* TRACK LIST */
 .songs-container {
     background:#121212;
     border-radius:12px;
@@ -69,7 +60,6 @@ body {
 .track-item:hover { background:#1b1b1b; }
 .track-title { font-size:14px; font-weight:600; }
 .track-artist { font-size:12px; color:#aaa; }
-
 .play-btn {
     width:36px;
     height:36px;
@@ -77,10 +67,7 @@ body {
     border:1px solid #555;
     background:none;
     color:white;
-    cursor:pointer;
 }
-
-/* MINI PLAYER */
 .mini-player {
     position:fixed;
     bottom:0;
@@ -89,17 +76,13 @@ body {
     background:#1b1b1b;
     border-top:1px solid #333;
     padding:10px 15px;
-    z-index:999;
 }
 .mini-player.hidden { display:none; }
-
 .mini-title {
     font-size:14px;
     font-weight:600;
     margin-bottom:6px;
 }
-
-/* CONTROLS */
 .controls {
     display:flex;
     justify-content:center;
@@ -110,10 +93,7 @@ body {
     background:none;
     border:none;
     color:white;
-    cursor:pointer;
 }
-
-/* PROGRESS */
 .progress {
     display:flex;
     align-items:center;
@@ -125,7 +105,6 @@ body {
     flex:1;
     accent-color:white;
 }
-
 #audio-player { display:none; }
 </style>
 </head>
@@ -141,25 +120,21 @@ body {
 
 <div class="layout">
     <div class="songs-container">
-
         <div class="library-menu">
             <button class="menu-btn active">🎵 Библиотека</button>
             <button class="menu-btn">📂 Плейлисты</button>
         </div>
-
         <div id="track-list"></div>
     </div>
 </div>
 
 <div class="mini-player hidden" id="mini-player">
     <div class="mini-title" id="mini-title"></div>
-
     <div class="controls">
         <button class="ctrl-btn" id="prev">⏮</button>
         <button class="ctrl-btn" id="play">▶</button>
         <button class="ctrl-btn" id="next">⏭</button>
     </div>
-
     <div class="progress">
         <span id="current">0:00</span>
         <input type="range" id="progress" value="0" min="0" step="0.1">
@@ -167,18 +142,15 @@ body {
     </div>
 </div>
 
-<audio id="audio-player"></audio>
+<audio id="audio-player" preload="metadata"></audio>
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready(); 
+tg.ready();
 tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
-const initData = tg.initData;
-
 const audio = document.getElementById("audio-player");
-audio.preload = "metadata"; // 🔥 КЛЮЧЕВО
 
 const trackListDiv = document.getElementById("track-list");
 const miniTitle = document.getElementById("mini-title");
@@ -192,14 +164,12 @@ const miniPlayer = document.getElementById("mini-player");
 
 let tracks = [];
 let currentIndex = -1;
-let isSeeking = false;
+let seeking = false;
 
-/* ---------- LOAD TRACKS ---------- */
 async function loadTracks() {
     const r = await fetch(`${apiBase}/api/tracks`, {
-        headers:{ "X-TG-INIT-DATA": initData }
+        headers:{ "X-TG-INIT-DATA": tg.initData }
     });
-
     tracks = await r.json();
     trackListDiv.innerHTML = "";
 
@@ -219,10 +189,11 @@ async function loadTracks() {
     });
 }
 
-/* ---------- PLAY TRACK ---------- */
 function playTrack(index){
     currentIndex = index;
+    audio.pause();
     audio.src = `${apiBase}/tracks/stream/${tracks[index].id}`;
+    audio.load();              // 🔥 ВАЖНО
     audio.play();
 
     miniTitle.innerText = tracks[index].originalName;
@@ -230,60 +201,37 @@ function playTrack(index){
     miniPlayer.classList.remove("hidden");
 }
 
-/* ---------- CONTROLS ---------- */
 playBtn.onclick = () => {
-    if (audio.paused) {
-        audio.play();
-        playBtn.innerText = "⏸";
-    } else {
-        audio.pause();
-        playBtn.innerText = "▶";
-    }
+    if(audio.paused){ audio.play(); playBtn.innerText="⏸"; }
+    else { audio.pause(); playBtn.innerText="▶"; }
 };
+nextBtn.onclick = ()=> currentIndex < tracks.length-1 && playTrack(currentIndex+1);
+prevBtn.onclick = ()=> currentIndex > 0 && playTrack(currentIndex-1);
+audio.onended = ()=> nextBtn.click();
 
-nextBtn.onclick = () => {
-    if(currentIndex < tracks.length-1) playTrack(currentIndex+1);
-};
-prevBtn.onclick = () => {
-    if(currentIndex > 0) playTrack(currentIndex-1);
-};
-
-audio.onended = () => nextBtn.click();
-
-/* ---------- AUDIO META ---------- */
 audio.onloadedmetadata = () => {
-    if (isFinite(audio.duration)) {
-        progress.min = 0;
-        progress.max = audio.duration;
-        progress.value = 0;
-        durationEl.innerText = format(audio.duration);
-    }
+    progress.max = audio.duration;
+    durationEl.innerText = format(audio.duration);
 };
 
-/* ---------- UPDATE TIMELINE ---------- */
 audio.ontimeupdate = () => {
-    if (!isSeeking && isFinite(audio.currentTime)) {
+    if(!seeking){
         progress.value = audio.currentTime;
         currentEl.innerText = format(audio.currentTime);
     }
 };
 
-/* ---------- SEEK (🔥 FIXED) ---------- */
-progress.addEventListener("input", () => {
-    if (!isFinite(audio.duration)) return;
-    isSeeking = true;
-    audio.currentTime = progress.value; // 🔥 СРАЗУ ПЕРЕМОТКА
+progress.oninput = () => {
+    seeking = true;
+    audio.currentTime = progress.value;
     currentEl.innerText = format(progress.value);
-});
+};
+progress.onchange = () => {
+    seeking = false;
+    audio.play(); // 🔥 Telegram WebView FIX
+};
 
-progress.addEventListener("change", () => {
-    isSeeking = false;
-    audio.play(); // 🔥 ОБЯЗАТЕЛЬНО ДЛЯ TELEGRAM WEBVIEW
-});
-
-/* ---------- FORMAT ---------- */
 function format(t){
-    if(!isFinite(t)) return "0:00";
     const m = Math.floor(t/60);
     const s = Math.floor(t%60).toString().padStart(2,"0");
     return `${m}:${s}`;
@@ -291,7 +239,6 @@ function format(t){
 
 loadTracks();
 </script>
-
 
 </body>
 </html>

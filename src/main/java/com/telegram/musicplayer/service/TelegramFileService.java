@@ -1,16 +1,14 @@
 package com.telegram.musicplayer.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.telegram.musicplayer.model.TelegramUser;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import org.springframework.web.client.RestTemplate;
-
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 @Service
 public class TelegramFileService {
@@ -18,24 +16,40 @@ public class TelegramFileService {
     @Value("${telegram.bot.token}")
     private String botToken;
 
-    private static final String TELEGRAM_API = "https://api.telegram.org/bot";
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final HttpClient client = HttpClient.newHttpClient();
 
     public String getFileUrl(String fileId) {
         try {
+            // 1️⃣ getFile
             String getFileUrl =
-                    TELEGRAM_API + botToken + "/getFile?file_id=" + fileId;
+                    "https://api.telegram.org/bot" + botToken +
+                    "/getFile?file_id=" + fileId;
 
-            RestTemplate restTemplate = new RestTemplate();
-            Map response = restTemplate.getForObject(getFileUrl, Map.class);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(getFileUrl))
+                    .GET()
+                    .build();
 
-            Map result = (Map) response.get("result");
-            String filePath = (String) result.get("file_path");
+            HttpResponse<String> response =
+                    client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            return "https://api.telegram.org/file/bot" + botToken + "/" + filePath;
+            JsonNode root = mapper.readTree(response.body());
+
+            if (!root.get("ok").asBoolean()) {
+                throw new RuntimeException("Telegram getFile failed");
+            }
+
+            // 2️⃣ file_path
+            String filePath =
+                    root.get("result").get("file_path").asText();
+
+            // 3️⃣ CDN URL
+            return "https://api.telegram.org/file/bot"
+                    + botToken + "/" + filePath;
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to get telegram file", e);
+            throw new RuntimeException("Cannot get Telegram file URL", e);
         }
     }
 }
-

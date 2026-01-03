@@ -4,16 +4,12 @@ import com.telegram.musicplayer.model.Track;
 import com.telegram.musicplayer.model.TelegramUser;
 import com.telegram.musicplayer.service.TrackService;
 import com.telegram.musicplayer.service.TelegramAuthService;
+import com.telegram.musicplayer.service.TelegramFileService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,6 +18,7 @@ public class TrackController {
 
     private final TrackService trackService;
     private final TelegramAuthService telegramAuthService;
+    private final TelegramFileService telegramFileService;
 
     // ===================== ЗАГРУЗКА (БОТ) =====================
     @PostMapping("/upload")
@@ -31,74 +28,45 @@ public class TrackController {
             @RequestParam String filename,
             @RequestParam String telegramFileId
     ) {
-        System.out.println("UPLOAD TRACK: userId=" + userId + ", file=" + originalName);
-
         return trackService.saveTrack(userId, originalName, filename, telegramFileId);
     }
 
-    // ===================== MINI APP =====================
+    // ===================== MINI APP: СПИСОК ТРЕКОВ =====================
     @GetMapping
     public List<Track> getTracksForMiniApp(
             @RequestHeader("X-TG-INIT-DATA") String initData
     ) {
-        System.out.println("MINI APP REQUEST RECEIVED");
-        System.out.println("INIT DATA = " + initData);
-
         TelegramUser user = telegramAuthService.parseAndValidate(initData);
+        return trackService.getTracksByUser(user.getId());
+    }
 
-        System.out.println("MINI APP USER ID = " + user.getId());
+    // ===================== MINI APP: ПОЛУЧИТЬ URL ДЛЯ ПРОИГРЫВАНИЯ =====================
+    @GetMapping("/play/{trackId}")
+    public Map<String, String> playTrack(
+            @PathVariable Long trackId,
+            @RequestHeader("X-TG-INIT-DATA") String initData
+    ) {
+        // проверяем пользователя
+        telegramAuthService.parseAndValidate(initData);
 
-        List<Track> tracks = trackService.getTracksByUser(user.getId());
+        Track track = trackService.getTrack(trackId);
 
-        System.out.println("TRACKS FOUND = " + tracks.size());
+        // 🔥 ВАЖНО: получаем CDN ссылку Telegram
+        String streamUrl = telegramFileService.getFileUrl(track.getTelegramFileId());
 
-        return tracks;
+        // отдаём ФРОНТУ
+        return Map.of("streamUrl", streamUrl);
     }
 
     // ===================== АДМИН / БОТ =====================
     @GetMapping("/user/{userId}")
     public List<Track> getTracksByUserId(@PathVariable Long userId) {
-        System.out.println("ADMIN REQUEST USER ID = " + userId);
-
         return trackService.getTracksByUser(userId);
-    }
-
-    // ===================== АУДИО ФАЙЛ =====================
-    @GetMapping("/file/{trackId}")
-    public ResponseEntity<Resource> getTrackFile(@PathVariable Long trackId) {
-        try {
-            System.out.println("GET TRACK FILE ID = " + trackId);
-
-            Track track = trackService.getTrack(trackId);
-            Path path = trackService.resolveTrackPath(track);
-
-            Resource resource = new UrlResource(path.toUri());
-
-            if (!resource.exists()) {
-                System.out.println("FILE NOT FOUND: " + path);
-                return ResponseEntity.notFound().build();
-            }
-
-            return ResponseEntity.ok()
-                    .header(
-                            HttpHeaders.CONTENT_DISPOSITION,
-                            "inline; filename=\"" + track.getOriginalName() + "\""
-                    )
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .body(resource);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().build();
-        }
     }
 
     // ===================== УДАЛЕНИЕ =====================
     @DeleteMapping("/{trackId}")
-    public ResponseEntity<Void> deleteTrack(@PathVariable Long trackId) {
-        System.out.println("DELETE TRACK ID = " + trackId);
-
+    public void deleteTrack(@PathVariable Long trackId) {
         trackService.deleteTrack(trackId);
-        return ResponseEntity.noContent().build();
     }
 }
