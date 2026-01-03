@@ -171,12 +171,15 @@ body {
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready(); tg.expand();
+tg.ready(); 
+tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
 const initData = tg.initData;
 
 const audio = document.getElementById("audio-player");
+audio.preload = "metadata"; // 🔥 КЛЮЧЕВО
+
 const trackListDiv = document.getElementById("track-list");
 const miniTitle = document.getElementById("mini-title");
 const playBtn = document.getElementById("play");
@@ -189,12 +192,14 @@ const miniPlayer = document.getElementById("mini-player");
 
 let tracks = [];
 let currentIndex = -1;
-let seeking = false;
+let isSeeking = false;
 
+/* ---------- LOAD TRACKS ---------- */
 async function loadTracks() {
     const r = await fetch(`${apiBase}/api/tracks`, {
         headers:{ "X-TG-INIT-DATA": initData }
     });
+
     tracks = await r.json();
     trackListDiv.innerHTML = "";
 
@@ -214,6 +219,7 @@ async function loadTracks() {
     });
 }
 
+/* ---------- PLAY TRACK ---------- */
 function playTrack(index){
     currentIndex = index;
     audio.src = `${apiBase}/tracks/stream/${tracks[index].id}`;
@@ -224,9 +230,15 @@ function playTrack(index){
     miniPlayer.classList.remove("hidden");
 }
 
+/* ---------- CONTROLS ---------- */
 playBtn.onclick = () => {
-    audio.paused ? audio.play() : audio.pause();
-    playBtn.innerText = audio.paused ? "▶" : "⏸";
+    if (audio.paused) {
+        audio.play();
+        playBtn.innerText = "⏸";
+    } else {
+        audio.pause();
+        playBtn.innerText = "▶";
+    }
 };
 
 nextBtn.onclick = () => {
@@ -236,32 +248,40 @@ prevBtn.onclick = () => {
     if(currentIndex > 0) playTrack(currentIndex-1);
 };
 
+audio.onended = () => nextBtn.click();
+
+/* ---------- AUDIO META ---------- */
 audio.onloadedmetadata = () => {
     if (isFinite(audio.duration)) {
+        progress.min = 0;
         progress.max = audio.duration;
+        progress.value = 0;
         durationEl.innerText = format(audio.duration);
     }
 };
 
+/* ---------- UPDATE TIMELINE ---------- */
 audio.ontimeupdate = () => {
-    if (!seeking && isFinite(audio.currentTime)) {
+    if (!isSeeking && isFinite(audio.currentTime)) {
         progress.value = audio.currentTime;
         currentEl.innerText = format(audio.currentTime);
     }
 };
 
+/* ---------- SEEK (🔥 FIXED) ---------- */
 progress.addEventListener("input", () => {
-    seeking = true;
+    if (!isFinite(audio.duration)) return;
+    isSeeking = true;
+    audio.currentTime = progress.value; // 🔥 СРАЗУ ПЕРЕМОТКА
     currentEl.innerText = format(progress.value);
 });
 
 progress.addEventListener("change", () => {
-    if (isFinite(audio.duration)) {
-        audio.currentTime = progress.value;
-    }
-    seeking = false;
+    isSeeking = false;
+    audio.play(); // 🔥 ОБЯЗАТЕЛЬНО ДЛЯ TELEGRAM WEBVIEW
 });
 
+/* ---------- FORMAT ---------- */
 function format(t){
     if(!isFinite(t)) return "0:00";
     const m = Math.floor(t/60);
@@ -271,6 +291,7 @@ function format(t){
 
 loadTracks();
 </script>
+
 
 </body>
 </html>
