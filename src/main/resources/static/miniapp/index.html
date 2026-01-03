@@ -171,8 +171,7 @@ body {
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+tg.ready(); tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
 const initData = tg.initData;
@@ -186,24 +185,24 @@ const nextBtn = document.getElementById("next");
 const progress = document.getElementById("progress");
 const currentEl = document.getElementById("current");
 const durationEl = document.getElementById("duration");
+const miniPlayer = document.getElementById("mini-player");
 
 let tracks = [];
 let currentIndex = -1;
-let isDragging = false;
+let seeking = false;
 
-/* ===== ЗАГРУЗКА ТРЕКОВ ===== */
 async function loadTracks() {
     const r = await fetch(`${apiBase}/api/tracks`, {
-        headers: { "X-TG-INIT-DATA": initData }
+        headers:{ "X-TG-INIT-DATA": initData }
     });
     tracks = await r.json();
     trackListDiv.innerHTML = "";
 
-    tracks.forEach((t, i) => {
+    tracks.forEach((t,i)=>{
         const div = document.createElement("div");
         div.className = "track-item";
         div.innerHTML = `
-            <span>${i + 1}</span>
+            <span>${i+1}</span>
             <div>
                 <div class="track-title">${t.originalName}</div>
                 <div class="track-artist">${t.performer || "Unknown"}</div>
@@ -215,86 +214,63 @@ async function loadTracks() {
     });
 }
 
-/* ===== ВОСПРОИЗВЕДЕНИЕ ===== */
-function playTrack(index) {
+function playTrack(index){
     currentIndex = index;
     audio.src = `${apiBase}/tracks/stream/${tracks[index].id}`;
     audio.play();
 
     miniTitle.innerText = tracks[index].originalName;
     playBtn.innerText = "⏸";
+    miniPlayer.classList.remove("hidden");
 }
 
-/* ===== КНОПКИ ===== */
 playBtn.onclick = () => {
-    if (audio.paused) {
-        audio.play();
-        playBtn.innerText = "⏸";
-    } else {
-        audio.pause();
-        playBtn.innerText = "▶";
-    }
+    audio.paused ? audio.play() : audio.pause();
+    playBtn.innerText = audio.paused ? "▶" : "⏸";
 };
 
 nextBtn.onclick = () => {
-    if (currentIndex < tracks.length - 1) {
-        playTrack(currentIndex + 1);
-    }
+    if(currentIndex < tracks.length-1) playTrack(currentIndex+1);
 };
-
 prevBtn.onclick = () => {
-    if (currentIndex > 0) {
-        playTrack(currentIndex - 1);
-    }
+    if(currentIndex > 0) playTrack(currentIndex-1);
 };
 
-/* ===== МЕТАДАННЫЕ ===== */
 audio.onloadedmetadata = () => {
     if (isFinite(audio.duration)) {
-        progress.min = 0;
         progress.max = audio.duration;
         durationEl.innerText = format(audio.duration);
     }
 };
 
-/* ===== ОБНОВЛЕНИЕ ВРЕМЕНИ ===== */
 audio.ontimeupdate = () => {
-    if (!isDragging && isFinite(audio.currentTime)) {
+    if (!seeking && isFinite(audio.currentTime)) {
         progress.value = audio.currentTime;
         currentEl.innerText = format(audio.currentTime);
     }
 };
 
-/* ===== ПЕРЕМОТКА (РАБОЧАЯ) ===== */
-progress.addEventListener("mousedown", () => isDragging = true);
-progress.addEventListener("touchstart", () => isDragging = true);
-
 progress.addEventListener("input", () => {
+    seeking = true;
     currentEl.innerText = format(progress.value);
 });
 
-progress.addEventListener("mouseup", seek);
-progress.addEventListener("touchend", seek);
-
-function seek() {
+progress.addEventListener("change", () => {
     if (isFinite(audio.duration)) {
-        audio.currentTime = Number(progress.value);
+        audio.currentTime = progress.value;
     }
-    isDragging = false;
-}
+    seeking = false;
+});
 
-/* ===== УТИЛИТА ===== */
-function format(sec) {
-    if (!isFinite(sec)) return "0:00";
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60).toString().padStart(2, "0");
+function format(t){
+    if(!isFinite(t)) return "0:00";
+    const m = Math.floor(t/60);
+    const s = Math.floor(t%60).toString().padStart(2,"0");
     return `${m}:${s}`;
 }
 
 loadTracks();
 </script>
-
-
 
 </body>
 </html>
