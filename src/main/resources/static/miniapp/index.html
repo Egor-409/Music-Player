@@ -32,9 +32,7 @@ body {
 }
 
 /* LAYOUT */
-.layout {
-    padding:15px;
-}
+.layout { padding:15px; }
 
 /* LIBRARY MENU */
 .library-menu {
@@ -49,12 +47,10 @@ body {
     padding:8px 16px;
     border-radius:20px;
     cursor:pointer;
-    font-size:14px;
 }
 .menu-btn.active {
     background:#fff;
     color:#000;
-    border-color:#fff;
 }
 
 /* TRACK LIST */
@@ -95,16 +91,12 @@ body {
     padding:10px 15px;
     z-index:999;
 }
-.mini-player.hidden {
-    display:none;
-}
+.mini-player.hidden { display:none; }
+
 .mini-title {
     font-size:14px;
     font-weight:600;
     margin-bottom:6px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
 }
 
 /* CONTROLS */
@@ -159,7 +151,6 @@ body {
     </div>
 </div>
 
-<!-- MINI PLAYER -->
 <div class="mini-player hidden" id="mini-player">
     <div class="mini-title" id="mini-title"></div>
 
@@ -171,7 +162,7 @@ body {
 
     <div class="progress">
         <span id="current">0:00</span>
-        <input type="range" id="progress" value="0" min="0" max="100">
+        <input type="range" id="progress" value="0" min="0" step="0.1">
         <span id="duration">0:00</span>
     </div>
 </div>
@@ -180,8 +171,7 @@ body {
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready(); 
-tg.expand();
+tg.ready(); tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
 const initData = tg.initData;
@@ -193,15 +183,13 @@ const playBtn = document.getElementById("play");
 const prevBtn = document.getElementById("prev");
 const nextBtn = document.getElementById("next");
 const progress = document.getElementById("progress");
-const currentTimeEl = document.getElementById("current");
+const currentEl = document.getElementById("current");
 const durationEl = document.getElementById("duration");
 const miniPlayer = document.getElementById("mini-player");
 
 let tracks = [];
 let currentIndex = -1;
-let isSeeking = false;
-
-audio.preload = "none";
+let seeking = false;
 
 async function loadTracks() {
     const r = await fetch(`${apiBase}/api/tracks`, {
@@ -221,7 +209,7 @@ async function loadTracks() {
             </div>
             <button class="play-btn">▶</button>
         `;
-        div.querySelector("button").onclick=()=>playTrack(i);
+        div.querySelector("button").onclick = () => playTrack(i);
         trackListDiv.appendChild(div);
     });
 }
@@ -237,57 +225,47 @@ function playTrack(index){
 }
 
 playBtn.onclick = () => {
-    if(audio.paused){
-        audio.play();
-        playBtn.innerText="⏸";
-    } else {
-        audio.pause();
-        playBtn.innerText="▶";
-    }
+    audio.paused ? audio.play() : audio.pause();
+    playBtn.innerText = audio.paused ? "▶" : "⏸";
 };
 
 nextBtn.onclick = () => {
     if(currentIndex < tracks.length-1) playTrack(currentIndex+1);
 };
-
 prevBtn.onclick = () => {
     if(currentIndex > 0) playTrack(currentIndex-1);
 };
 
-audio.onended = () => nextBtn.click();
-
 audio.onloadedmetadata = () => {
-    durationEl.innerText = format(audio.duration);
+    if (isFinite(audio.duration)) {
+        progress.max = audio.duration;
+        durationEl.innerText = format(audio.duration);
+    }
 };
 
 audio.ontimeupdate = () => {
-    if (!isSeeking && audio.duration) {
-        progress.value = (audio.currentTime / audio.duration) * 100;
-        currentTimeEl.innerText = format(audio.currentTime);
+    if (!seeking && isFinite(audio.currentTime)) {
+        progress.value = audio.currentTime;
+        currentEl.innerText = format(audio.currentTime);
     }
 };
 
-progress.addEventListener("mousedown", () => isSeeking = true);
-
-progress.addEventListener("mouseup", () => {
-    if (audio.duration) {
-        audio.currentTime = (progress.value / 100) * audio.duration;
-    }
-    isSeeking = false;
+progress.addEventListener("input", () => {
+    seeking = true;
+    currentEl.innerText = format(progress.value);
 });
 
-progress.addEventListener("input", () => {
-    if (isSeeking && audio.duration) {
-        currentTimeEl.innerText = format(
-            (progress.value / 100) * audio.duration
-        );
+progress.addEventListener("change", () => {
+    if (isFinite(audio.duration)) {
+        audio.currentTime = progress.value;
     }
+    seeking = false;
 });
 
 function format(t){
-    if(!t) return "0:00";
-    const m=Math.floor(t/60);
-    const s=Math.floor(t%60).toString().padStart(2,"0");
+    if(!isFinite(t)) return "0:00";
+    const m = Math.floor(t/60);
+    const s = Math.floor(t%60).toString().padStart(2,"0");
     return `${m}:${s}`;
 }
 
