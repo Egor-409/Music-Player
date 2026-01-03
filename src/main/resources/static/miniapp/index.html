@@ -189,17 +189,32 @@ async function loadTracks() {
     });
 }
 
-function playTrack(index){
+async function playTrack(index){
     currentIndex = index;
+
+    // 1️⃣ получаем CDN ссылку
+    const r = await fetch(
+        `${apiBase}/api/tracks/play/${tracks[index].id}`,
+        {
+            headers: { "X-TG-INIT-DATA": tg.initData }
+        }
+    );
+
+    const data = await r.json();
+
+    // 2️⃣ напрямую ставим Telegram CDN
     audio.pause();
-    audio.src = `${apiBase}/tracks/stream/${tracks[index].id}`;
-    audio.load();              // 🔥 ВАЖНО
-    audio.play();
+    audio.src = data.streamUrl;
+    audio.load();
+
+    // 3️⃣ play (обязательно после user action)
+    await audio.play();
 
     miniTitle.innerText = tracks[index].originalName;
     playBtn.innerText = "⏸";
     miniPlayer.classList.remove("hidden");
 }
+
 
 playBtn.onclick = () => {
     if(audio.paused){ audio.play(); playBtn.innerText="⏸"; }
