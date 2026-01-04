@@ -12,6 +12,8 @@ body {
     font-family:Arial,sans-serif;
     color:#fff;
 }
+
+/* HEADER */
 .header {
     display:flex;
     justify-content:space-between;
@@ -20,7 +22,7 @@ body {
     background:#1a1a1a;
     border-bottom:1px solid #333;
 }
-.header-title { font-size:20px; font-weight:bold; }
+.header-title { font-size:22px; font-weight:bold; }
 .search-box input {
     padding:8px 12px;
     border-radius:6px;
@@ -28,7 +30,11 @@ body {
     background:#222;
     color:#fff;
 }
+
+/* LAYOUT */
 .layout { padding:15px; }
+
+/* MENU */
 .library-menu {
     display:flex;
     gap:10px;
@@ -45,21 +51,27 @@ body {
     background:#fff;
     color:#000;
 }
+
+/* TRACK LIST */
 .songs-container {
     background:#121212;
     border-radius:12px;
-    padding:15px;
+    padding:10px;
 }
+
 .track-item {
     display:grid;
-    grid-template-columns:30px 1fr auto;
-    gap:10px;
-    padding:10px;
-    border-radius:8px;
+    grid-template-columns:30px 1fr auto auto;
+    gap:12px;
+    padding:12px;
+    border-radius:10px;
+    cursor:pointer;
 }
 .track-item:hover { background:#1b1b1b; }
+
 .track-title { font-size:14px; font-weight:600; }
 .track-artist { font-size:12px; color:#aaa; }
+
 .play-btn {
     width:36px;
     height:36px;
@@ -67,7 +79,18 @@ body {
     border:1px solid #555;
     background:none;
     color:white;
+    cursor:pointer;
 }
+
+.more-btn {
+    background:none;
+    border:none;
+    color:#aaa;
+    font-size:20px;
+    cursor:pointer;
+}
+
+/* MINI PLAYER */
 .mini-player {
     position:fixed;
     bottom:0;
@@ -78,22 +101,30 @@ body {
     padding:10px 15px;
 }
 .mini-player.hidden { display:none; }
+
 .mini-title {
     font-size:14px;
     font-weight:600;
-    margin-bottom:6px;
+    margin-bottom:8px;
 }
+
+/* CONTROLS */
 .controls {
     display:flex;
     justify-content:center;
-    gap:25px;
-    font-size:26px;
+    align-items:center;
+    gap:28px;
+    font-size:30px;
+    margin-bottom:8px;
 }
 .ctrl-btn {
     background:none;
     border:none;
     color:white;
+    cursor:pointer;
 }
+
+/* PROGRESS */
 .progress {
     display:flex;
     align-items:center;
@@ -103,8 +134,10 @@ body {
 }
 .progress input[type=range] {
     flex:1;
+    max-width:65%;
     accent-color:white;
 }
+
 #audio-player { display:none; }
 </style>
 </head>
@@ -130,11 +163,15 @@ body {
 
 <div class="mini-player hidden" id="mini-player">
     <div class="mini-title" id="mini-title"></div>
+
     <div class="controls">
+        <button class="ctrl-btn" id="repeat">🔁</button>
         <button class="ctrl-btn" id="prev">⏮</button>
         <button class="ctrl-btn" id="play">▶</button>
         <button class="ctrl-btn" id="next">⏭</button>
+        <button class="ctrl-btn">⋯</button>
     </div>
+
     <div class="progress">
         <span id="current">0:00</span>
         <input type="range" id="progress" value="0" min="0" step="0.1">
@@ -146,8 +183,7 @@ body {
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+tg.ready(); tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
 const audio = document.getElementById("audio-player");
@@ -157,6 +193,7 @@ const miniTitle = document.getElementById("mini-title");
 const playBtn = document.getElementById("play");
 const prevBtn = document.getElementById("prev");
 const nextBtn = document.getElementById("next");
+const repeatBtn = document.getElementById("repeat");
 const progress = document.getElementById("progress");
 const currentEl = document.getElementById("current");
 const durationEl = document.getElementById("duration");
@@ -165,21 +202,17 @@ const miniPlayer = document.getElementById("mini-player");
 let tracks = [];
 let currentIndex = -1;
 let seeking = false;
+let repeat = false;
 
-// 🔥 КЭШ Telegram CDN ссылок
 const linkCache = new Map();
 
-async function getStreamUrl(trackId){
-    if(linkCache.has(trackId)) {
-        return linkCache.get(trackId);
-    }
-
-    const r = await fetch(`${apiBase}/api/tracks/play/${trackId}`, {
+async function getStreamUrl(id){
+    if(linkCache.has(id)) return linkCache.get(id);
+    const r = await fetch(`${apiBase}/api/tracks/play/${id}`, {
         headers:{ "X-TG-INIT-DATA": tg.initData }
     });
-
     const data = await r.json();
-    linkCache.set(trackId, data.streamUrl);
+    linkCache.set(id, data.streamUrl);
     return data.streamUrl;
 }
 
@@ -188,8 +221,11 @@ async function loadTracks() {
         headers:{ "X-TG-INIT-DATA": tg.initData }
     });
     tracks = await r.json();
-    trackListDiv.innerHTML = "";
+    renderTracks();
+}
 
+function renderTracks(){
+    trackListDiv.innerHTML = "";
     tracks.forEach((t,i)=>{
         const div = document.createElement("div");
         div.className = "track-item";
@@ -199,62 +235,62 @@ async function loadTracks() {
                 <div class="track-title">${t.originalName}</div>
                 <div class="track-artist">${t.performer || "Unknown"}</div>
             </div>
-            <button class="play-btn">▶</button>
+            <button class="play-btn">${i===currentIndex && !audio.paused ? "⏸" : "▶"}</button>
+            <button class="more-btn">⋯</button>
         `;
-        div.querySelector("button").onclick = () => playTrack(i);
+
+        div.onclick = () => playTrack(i);
+        div.querySelector(".more-btn").onclick = e => e.stopPropagation();
+
         trackListDiv.appendChild(div);
     });
 }
 
 async function playTrack(index){
     currentIndex = index;
-
-    audio.pause();
-    audio.src = "";
-
-    const streamUrl = await getStreamUrl(tracks[index].id);
-
-    audio.src = streamUrl;
+    audio.src = await getStreamUrl(tracks[index].id);
     await audio.play();
 
     miniTitle.innerText = tracks[index].originalName;
     playBtn.innerText = "⏸";
     miniPlayer.classList.remove("hidden");
+    renderTracks();
 }
 
 playBtn.onclick = () => {
-    if(audio.paused){
-        audio.play();
-        playBtn.innerText="⏸";
-    } else {
-        audio.pause();
-        playBtn.innerText="▶";
-    }
+    if(audio.paused){ audio.play(); playBtn.innerText="⏸"; }
+    else { audio.pause(); playBtn.innerText="▶"; }
+    renderTracks();
 };
 
 nextBtn.onclick = ()=> currentIndex < tracks.length-1 && playTrack(currentIndex+1);
 prevBtn.onclick = ()=> currentIndex > 0 && playTrack(currentIndex-1);
-audio.onended = ()=> nextBtn.click();
 
-audio.onloadedmetadata = () => {
+repeatBtn.onclick = ()=>{
+    repeat = !repeat;
+    repeatBtn.style.opacity = repeat ? "1" : "0.4";
+};
+
+audio.onended = ()=> repeat ? audio.play() : nextBtn.click();
+
+audio.onloadedmetadata = ()=>{
     progress.max = audio.duration;
     durationEl.innerText = format(audio.duration);
 };
 
-audio.ontimeupdate = () => {
+audio.ontimeupdate = ()=>{
     if(!seeking){
         progress.value = audio.currentTime;
         currentEl.innerText = format(audio.currentTime);
     }
 };
 
-progress.oninput = () => {
+progress.oninput = ()=>{
     seeking = true;
     audio.currentTime = progress.value;
-    currentEl.innerText = format(progress.value);
 };
 
-progress.onchange = () => {
+progress.onchange = ()=>{
     seeking = false;
     audio.play();
 };
