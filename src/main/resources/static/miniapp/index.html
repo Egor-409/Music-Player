@@ -166,6 +166,23 @@ let tracks = [];
 let currentIndex = -1;
 let seeking = false;
 
+// 🔥 КЭШ Telegram CDN ссылок
+const linkCache = new Map();
+
+async function getStreamUrl(trackId){
+    if(linkCache.has(trackId)) {
+        return linkCache.get(trackId);
+    }
+
+    const r = await fetch(`${apiBase}/api/tracks/play/${trackId}`, {
+        headers:{ "X-TG-INIT-DATA": tg.initData }
+    });
+
+    const data = await r.json();
+    linkCache.set(trackId, data.streamUrl);
+    return data.streamUrl;
+}
+
 async function loadTracks() {
     const r = await fetch(`${apiBase}/api/tracks`, {
         headers:{ "X-TG-INIT-DATA": tg.initData }
@@ -192,22 +209,12 @@ async function loadTracks() {
 async function playTrack(index){
     currentIndex = index;
 
-    // 1️⃣ получаем CDN ссылку
-    const r = await fetch(
-        `${apiBase}/api/tracks/play/${tracks[index].id}`,
-        {
-            headers: { "X-TG-INIT-DATA": tg.initData }
-        }
-    );
-
-    const data = await r.json();
-
-    // 2️⃣ напрямую ставим Telegram CDN
     audio.pause();
-    audio.src = data.streamUrl;
-    audio.load();
+    audio.src = "";
 
-    // 3️⃣ play (обязательно после user action)
+    const streamUrl = await getStreamUrl(tracks[index].id);
+
+    audio.src = streamUrl;
     await audio.play();
 
     miniTitle.innerText = tracks[index].originalName;
@@ -215,11 +222,16 @@ async function playTrack(index){
     miniPlayer.classList.remove("hidden");
 }
 
-
 playBtn.onclick = () => {
-    if(audio.paused){ audio.play(); playBtn.innerText="⏸"; }
-    else { audio.pause(); playBtn.innerText="▶"; }
+    if(audio.paused){
+        audio.play();
+        playBtn.innerText="⏸";
+    } else {
+        audio.pause();
+        playBtn.innerText="▶";
+    }
 };
+
 nextBtn.onclick = ()=> currentIndex < tracks.length-1 && playTrack(currentIndex+1);
 prevBtn.onclick = ()=> currentIndex > 0 && playTrack(currentIndex-1);
 audio.onended = ()=> nextBtn.click();
@@ -241,9 +253,10 @@ progress.oninput = () => {
     audio.currentTime = progress.value;
     currentEl.innerText = format(progress.value);
 };
+
 progress.onchange = () => {
     seeking = false;
-    audio.play(); // 🔥 Telegram WebView FIX
+    audio.play();
 };
 
 function format(t){
