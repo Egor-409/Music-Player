@@ -88,25 +88,27 @@ body {
     font-size:20px;
 }
 
-/* CONTEXT MENU */
-.menu {
-    position:absolute;
-    background:#222;
-    border:1px solid #333;
-    border-radius:8px;
-    padding:6px 0;
-    z-index:1000;
+/* CONTEXT MENU (FIXED) */
+.context-menu {
+    position:fixed;
+    z-index:9999;
+    min-width:200px;
+    background:#1f1f1f;
+    border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.6);
+    padding:6px;
 }
-.menu button {
-    display:block;
+.context-menu button {
     width:100%;
     background:none;
     border:none;
-    color:#fff;
-    padding:10px 16px;
+    color:white;
+    padding:10px 12px;
     text-align:left;
+    border-radius:8px;
 }
-.menu button:hover { background:#333; }
+.context-menu button:hover { background:#2a2a2a; }
+.context-menu.hidden { display:none; }
 
 /* MINI PLAYER */
 .mini-player {
@@ -196,6 +198,12 @@ body {
     </div>
 </div>
 
+<!-- GLOBAL CONTEXT MENU -->
+<div id="context-menu" class="context-menu hidden">
+    <button id="delete-track">🗑 Удалить</button>
+    <button>➕ Добавить в плейлист</button>
+</div>
+
 <audio id="audio-player" preload="metadata"></audio>
 
 <script>
@@ -218,10 +226,13 @@ const currentEl = document.getElementById("current");
 const durationEl = document.getElementById("duration");
 const miniPlayer = document.getElementById("mini-player");
 
+const contextMenu = document.getElementById("context-menu");
+const deleteBtn = document.getElementById("delete-track");
+
 let tracks = [];
 let currentIndex = -1;
 let repeat = false;
-let menuEl = null;
+let contextTrackId = null;
 
 const linkCache = new Map();
 
@@ -259,9 +270,10 @@ function renderTracks(){
         `;
 
         div.onclick = ()=> playTrack(i);
-        div.querySelector(".more-btn").onclick = e => {
+
+        div.querySelector(".more-btn").onclick = e=>{
             e.stopPropagation();
-            openMenu(e.clientX, e.clientY, t.id);
+            openContextMenu(e.currentTarget, t.id);
         };
 
         trackListDiv.appendChild(div);
@@ -307,39 +319,35 @@ audio.ontimeupdate = ()=>{
 
 progress.oninput = ()=> audio.currentTime = progress.value;
 
-function openMenu(x,y,trackId){
-    closeMenu();
-    menuEl = document.createElement("div");
-    menuEl.className = "menu";
-    menuEl.style.left = x+"px";
-    menuEl.style.top = y+"px";
-    menuEl.innerHTML = `
-        <button onclick="deleteTrack(${trackId})">🗑 Удалить</button>
-        <button>➕ Добавить в плейлист</button>
-    `;
-    document.body.appendChild(menuEl);
+/* CONTEXT MENU LOGIC */
+function openContextMenu(btn, trackId){
+    contextTrackId = trackId;
+    const r = btn.getBoundingClientRect();
+    contextMenu.style.top = `${r.bottom + 6}px`;
+    contextMenu.style.left = `${r.right - 200}px`;
+    contextMenu.classList.remove("hidden");
 }
 
-function closeMenu(){
-    if(menuEl){ menuEl.remove(); menuEl=null; }
+function closeContextMenu(){
+    contextMenu.classList.add("hidden");
+    contextTrackId = null;
 }
 
-document.body.onclick = closeMenu;
-
-async function deleteTrack(id){
-    await fetch(`${apiBase}/api/tracks/${id}`, { method:"DELETE" });
-    if(tracks[currentIndex]?.id === id){
-        audio.pause();
-        miniPlayer.classList.add("hidden");
-        currentIndex = -1;
-    }
+deleteBtn.onclick = async ()=>{
+    if(!contextTrackId) return;
+    await fetch(`${apiBase}/api/tracks/${contextTrackId}`, { method:"DELETE" });
+    closeContextMenu();
     loadTracks();
-}
+};
 
 miniMore.onclick = e=>{
     if(currentIndex<0) return;
-    openMenu(e.clientX, e.clientY, tracks[currentIndex].id);
+    openContextMenu(e.currentTarget, tracks[currentIndex].id);
 };
+
+document.addEventListener("click", closeContextMenu);
+window.addEventListener("resize", closeContextMenu);
+window.addEventListener("scroll", closeContextMenu);
 
 function format(t){
     const m = Math.floor(t/60);
