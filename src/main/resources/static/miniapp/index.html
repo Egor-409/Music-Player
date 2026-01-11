@@ -46,6 +46,7 @@ body {
     color:#aaa;
     padding:8px 16px;
     border-radius:20px;
+    cursor:pointer;
 }
 .menu-btn.active {
     background:#fff;
@@ -79,6 +80,7 @@ body {
     border:1px solid #555;
     background:none;
     color:white;
+    cursor:pointer;
 }
 
 .more-btn {
@@ -86,9 +88,10 @@ body {
     border:none;
     color:#aaa;
     font-size:20px;
+    cursor:pointer;
 }
 
-/* CONTEXT MENU (FIXED) */
+/* CONTEXT MENU */
 .context-menu {
     position:fixed;
     z-index:9999;
@@ -106,6 +109,7 @@ body {
     padding:10px 12px;
     text-align:left;
     border-radius:8px;
+    cursor:pointer;
 }
 .context-menu button:hover { background:#2a2a2a; }
 .context-menu.hidden { display:none; }
@@ -141,6 +145,7 @@ body {
     background:none;
     border:none;
     color:white;
+    cursor:pointer;
 }
 
 /* PROGRESS */
@@ -174,7 +179,7 @@ body {
     <div class="songs-container">
         <div class="library-menu">
             <button class="menu-btn active">🎵 Библиотека</button>
-            <button class="menu-btn">📂 Плейлисты</button>
+            <button class="menu-btn" id="open-playlists">📂 Плейлисты</button>
         </div>
         <div id="track-list"></div>
     </div>
@@ -198,7 +203,7 @@ body {
     </div>
 </div>
 
-<!-- GLOBAL CONTEXT MENU -->
+<!-- CONTEXT MENU -->
 <div id="context-menu" class="context-menu hidden">
     <button id="delete-track">🗑 Удалить</button>
     <button>➕ Добавить в плейлист</button>
@@ -208,7 +213,8 @@ body {
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready(); tg.expand();
+tg.ready();
+tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
 const audio = document.getElementById("audio-player");
@@ -229,6 +235,8 @@ const miniPlayer = document.getElementById("mini-player");
 const contextMenu = document.getElementById("context-menu");
 const deleteBtn = document.getElementById("delete-track");
 
+repeatBtn.style.opacity = "0.4";
+
 let tracks = [];
 let currentIndex = -1;
 let repeat = false;
@@ -236,6 +244,12 @@ let contextTrackId = null;
 
 const linkCache = new Map();
 
+/* NAVIGATION */
+document.getElementById("open-playlists").onclick = () => {
+    window.location.href = "playlists.html";
+};
+
+/* AUDIO */
 async function getStreamUrl(id){
     if(linkCache.has(id)) return linkCache.get(id);
     const r = await fetch(`${apiBase}/api/tracks/play/${id}`, {
@@ -271,6 +285,11 @@ function renderTracks(){
 
         div.onclick = ()=> playTrack(i);
 
+        div.querySelector(".play-btn").onclick = e=>{
+            e.stopPropagation();
+            playTrack(i);
+        };
+
         div.querySelector(".more-btn").onclick = e=>{
             e.stopPropagation();
             openContextMenu(e.currentTarget, t.id);
@@ -291,8 +310,13 @@ async function playTrack(index){
 }
 
 playBtn.onclick = ()=>{
-    if(audio.paused){ audio.play(); playBtn.innerText="⏸"; }
-    else { audio.pause(); playBtn.innerText="▶"; }
+    if(audio.paused){
+        audio.play();
+        playBtn.innerText="⏸";
+    } else {
+        audio.pause();
+        playBtn.innerText="▶";
+    }
     renderTracks();
 };
 
@@ -319,7 +343,7 @@ audio.ontimeupdate = ()=>{
 
 progress.oninput = ()=> audio.currentTime = progress.value;
 
-/* CONTEXT MENU LOGIC */
+/* CONTEXT MENU */
 function openContextMenu(btn, trackId){
     contextTrackId = trackId;
     const r = btn.getBoundingClientRect();
@@ -333,21 +357,30 @@ function closeContextMenu(){
     contextTrackId = null;
 }
 
+contextMenu.addEventListener("click", e => e.stopPropagation());
+document.addEventListener("click", closeContextMenu);
+window.addEventListener("resize", closeContextMenu);
+
 deleteBtn.onclick = async ()=>{
     if(!contextTrackId) return;
+
     await fetch(`${apiBase}/api/tracks/${contextTrackId}`, { method:"DELETE" });
+
+    if(tracks[currentIndex]?.id === contextTrackId){
+        audio.pause();
+        audio.src = "";
+        miniPlayer.classList.add("hidden");
+        currentIndex = -1;
+    }
+
     closeContextMenu();
     loadTracks();
 };
 
 miniMore.onclick = e=>{
-    if(currentIndex<0) return;
+    if(currentIndex < 0) return;
     openContextMenu(e.currentTarget, tracks[currentIndex].id);
 };
-
-document.addEventListener("click", closeContextMenu);
-window.addEventListener("resize", closeContextMenu);
-window.addEventListener("scroll", closeContextMenu);
 
 function format(t){
     const m = Math.floor(t/60);
