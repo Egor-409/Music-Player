@@ -23,11 +23,22 @@ body {
     border-bottom:1px solid #333;
 }
 .header-title { font-size:22px; font-weight:bold; }
+.search-box input {
+    padding:8px 12px;
+    border-radius:6px;
+    border:none;
+    background:#222;
+    color:#fff;
+}
 
-/* NAV */
+/* LAYOUT */
+.layout { padding:15px; }
+
+/* MENU */
 .library-menu {
     display:flex;
     gap:10px;
+    margin-bottom:15px;
 }
 .menu-btn {
     background:#1e1e1e;
@@ -42,16 +53,17 @@ body {
     color:#000;
 }
 
-/* PAGES */
-.page { display:none; padding:15px; }
-.page.active { display:block; }
+/* CONTAINERS */
+.view { display:none; }
+.view.active { display:block; }
 
-/* SONGS */
+/* TRACK LIST */
 .songs-container {
     background:#121212;
     border-radius:12px;
     padding:10px;
 }
+
 .track-item {
     display:grid;
     grid-template-columns:30px 1fr auto auto;
@@ -62,31 +74,59 @@ body {
 }
 .track-item:hover { background:#1b1b1b; }
 
-/* PLAYLIST GRID */
+.track-title { font-size:14px; font-weight:600; }
+.track-artist { font-size:12px; color:#aaa; }
+
+.play-btn {
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    border:1px solid #555;
+    background:none;
+    color:white;
+    cursor:pointer;
+}
+
+.more-btn {
+    background:none;
+    border:none;
+    color:#aaa;
+    font-size:20px;
+    cursor:pointer;
+}
+
+/* PLAYLISTS GRID */
 .playlists-grid {
     display:grid;
-    grid-template-columns:repeat(2,1fr);
+    grid-template-columns:repeat(2, 1fr);
     gap:14px;
 }
 .playlist-card {
-    background:#1b1b1b;
+    background:#1a1a1a;
     border-radius:14px;
-    padding:16px;
+    padding:20px;
     aspect-ratio:1/1;
     display:flex;
-    flex-direction:column;
-    justify-content:space-between;
+    align-items:center;
+    justify-content:center;
+    font-weight:600;
     cursor:pointer;
 }
-.playlist-card:hover { background:#222; }
-.playlist-title {
-    font-size:16px;
-    font-weight:600;
+.playlist-card:hover {
+    background:#222;
 }
-.playlist-count {
-    font-size:12px;
-    color:#aaa;
+
+/* CONTEXT MENU */
+.context-menu {
+    position:fixed;
+    z-index:9999;
+    min-width:200px;
+    background:#1f1f1f;
+    border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.6);
+    padding:6px;
 }
+.context-menu.hidden { display:none; }
 
 /* MINI PLAYER */
 .mini-player {
@@ -100,17 +140,18 @@ body {
 }
 .mini-player.hidden { display:none; }
 
+/* CONTROLS */
 .controls {
     display:flex;
     justify-content:center;
     gap:26px;
-    font-size:28px;
+    font-size:30px;
 }
-.ctrl-btn {
-    background:none;
-    border:none;
-    color:white;
-    cursor:pointer;
+
+.progress {
+    display:flex;
+    gap:8px;
+    font-size:12px;
 }
 
 #audio-player { display:none; }
@@ -121,70 +162,71 @@ body {
 
 <div class="header">
     <div class="header-title">Telegram Music Cloud</div>
-    <div class="library-menu">
-        <button class="menu-btn active" id="nav-library">🎵 Библиотека</button>
-        <button class="menu-btn" id="nav-playlists">📂 Плейлисты</button>
+    <div class="search-box">
+        <input type="text" placeholder="Поиск...">
     </div>
 </div>
 
-<!-- LIBRARY -->
-<div class="page active" id="library-page">
-    <div class="songs-container" id="track-list"></div>
+<div class="layout">
+    <div class="library-menu">
+        <button class="menu-btn active" id="btn-library">🎵 Библиотека</button>
+        <button class="menu-btn" id="btn-playlists">📂 Плейлисты</button>
+    </div>
+
+    <!-- LIBRARY -->
+    <div id="library-view" class="view active">
+        <div class="songs-container">
+            <div id="track-list"></div>
+        </div>
+    </div>
+
+    <!-- PLAYLISTS -->
+    <div id="playlists-view" class="view">
+        <div class="playlists-grid">
+            <div class="playlist-card">➕ Новый плейлист</div>
+            <div class="playlist-card">❤️ Избранное</div>
+        </div>
+    </div>
 </div>
 
-<!-- PLAYLISTS -->
-<div class="page" id="playlists-page">
-    <div class="playlists-grid" id="playlist-list"></div>
-</div>
-
-<!-- MINI PLAYER -->
 <div class="mini-player hidden" id="mini-player">
     <div id="mini-title"></div>
     <div class="controls">
-        <button class="ctrl-btn" id="prev">⏮</button>
-        <button class="ctrl-btn" id="play">▶</button>
-        <button class="ctrl-btn" id="next">⏭</button>
+        <button id="prev">⏮</button>
+        <button id="play">▶</button>
+        <button id="next">⏭</button>
     </div>
 </div>
 
 <audio id="audio-player"></audio>
 
 <script>
-const tg = Telegram.WebApp;
-tg.ready(); tg.expand();
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
 const audio = document.getElementById("audio-player");
 
-/* NAV */
-const libraryPage = document.getElementById("library-page");
-const playlistsPage = document.getElementById("playlists-page");
-const navLibrary = document.getElementById("nav-library");
-const navPlaylists = document.getElementById("nav-playlists");
-
-function showLibrary(){
-    libraryPage.classList.add("active");
-    playlistsPage.classList.remove("active");
-    navLibrary.classList.add("active");
-    navPlaylists.classList.remove("active");
-}
-
-function showPlaylists(){
-    playlistsPage.classList.add("active");
-    libraryPage.classList.remove("active");
-    navPlaylists.classList.add("active");
-    navLibrary.classList.remove("active");
-}
-
-navLibrary.onclick = showLibrary;
-navPlaylists.onclick = showPlaylists;
-
-/* TRACKS */
-const trackList = document.getElementById("track-list");
+const trackListDiv = document.getElementById("track-list");
 const miniPlayer = document.getElementById("mini-player");
 const miniTitle = document.getElementById("mini-title");
 const playBtn = document.getElementById("play");
 
+const libraryView = document.getElementById("library-view");
+const playlistsView = document.getElementById("playlists-view");
+
+document.getElementById("btn-library").onclick = () => switchView("library");
+document.getElementById("btn-playlists").onclick = () => switchView("playlists");
+
+function switchView(view){
+    libraryView.classList.toggle("active", view==="library");
+    playlistsView.classList.toggle("active", view==="playlists");
+    document.getElementById("btn-library").classList.toggle("active", view==="library");
+    document.getElementById("btn-playlists").classList.toggle("active", view==="playlists");
+}
+
+/* TRACKS */
 let tracks=[], currentIndex=-1;
 
 async function loadTracks(){
@@ -196,17 +238,13 @@ async function loadTracks(){
 }
 
 function renderTracks(){
-    trackList.innerHTML="";
+    trackListDiv.innerHTML="";
     tracks.forEach((t,i)=>{
-        const div=document.createElement("div");
-        div.className="track-item";
-        div.innerHTML=`
-            <span>${i+1}</span>
-            <div>${t.originalName}</div>
-            <button>▶</button>
-        `;
-        div.onclick=()=>playTrack(i);
-        trackList.appendChild(div);
+        const d=document.createElement("div");
+        d.className="track-item";
+        d.innerHTML=`<span>${i+1}</span><div>${t.originalName}</div><button>▶</button>`;
+        d.onclick=()=>playTrack(i);
+        trackListDiv.appendChild(d);
     });
 }
 
@@ -224,32 +262,11 @@ async function playTrack(i){
 }
 
 playBtn.onclick=()=>{
-    if(audio.paused){ audio.play(); playBtn.innerText="⏸"; }
-    else{ audio.pause(); playBtn.innerText="▶"; }
+    audio.paused ? audio.play() : audio.pause();
+    playBtn.innerText = audio.paused ? "▶" : "⏸";
 };
 
-/* PLAYLISTS */
-const playlistList=document.getElementById("playlist-list");
-
-async function loadPlaylists(){
-    const r=await fetch(`${apiBase}/api/playlists`,{
-        headers:{ "X-TG-INIT-DATA": tg.initData }
-    });
-    const data=await r.json();
-    playlistList.innerHTML="";
-    data.forEach(p=>{
-        const div=document.createElement("div");
-        div.className="playlist-card";
-        div.innerHTML=`
-            <div class="playlist-title">${p.name}</div>
-            <div class="playlist-count">${p.tracksCount ?? 0} треков</div>
-        `;
-        playlistList.appendChild(div);
-    });
-}
-
 loadTracks();
-loadPlaylists();
 </script>
 
 </body>
