@@ -32,13 +32,17 @@ public class TrackController {
     }
 
     // ===================== MINI APP: СПИСОК ТРЕКОВ =====================
-    @GetMapping
-    public List<Track> getTracksForMiniApp(
-            @RequestHeader("X-TG-INIT-DATA") String initData
-    ) {
-        TelegramUser user = telegramAuthService.parseAndValidate(initData);
-        return trackService.getTracksByUser(user.getId());
-    }
+  // ===================== MINI APP: СПИСОК ТРЕКОВ =====================
+@GetMapping
+public List<Track> getTracksForMiniApp(
+        @RequestHeader("X-TG-INIT-DATA") String initData
+) {
+    // просто валидируем Telegram
+    telegramAuthService.parseAndValidate(initData);
+
+    // 🔥 временно возвращаем ВСЕ треки
+    return trackService.getTracksByUser(null);
+}
 
     // ===================== MINI APP: ПОЛУЧИТЬ URL ДЛЯ ПРОИГРЫВАНИЯ =====================
     @GetMapping("/play/{trackId}")
