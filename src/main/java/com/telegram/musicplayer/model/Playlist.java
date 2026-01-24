@@ -23,6 +23,10 @@ public class Playlist {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
+    private User user;
+
     @ManyToMany
     @JoinTable(
         name = "playlist_tracks",
