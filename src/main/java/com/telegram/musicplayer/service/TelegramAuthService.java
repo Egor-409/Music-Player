@@ -73,6 +73,11 @@ public class TelegramAuthService {
         }
     }
 
+    public Long getUserId(String initData) {
+        TelegramUser user = parseAndValidate(initData);
+        return user != null ? user.getId() : null;
+    }
+
     private String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder(bytes.length * 2);
         for (byte b : bytes) {

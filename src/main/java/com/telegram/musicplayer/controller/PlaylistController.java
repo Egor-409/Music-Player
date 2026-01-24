@@ -1,10 +1,9 @@
 package com.telegram.musicplayer.controller;
 
 import com.telegram.musicplayer.model.Playlist;
-import com.telegram.musicplayer.model.User;
-import com.telegram.musicplayer.repository.PlaylistRepository;
-import com.telegram.musicplayer.service.UserService;
-import com.telegram.musicplayer.util.TelegramInitDataParser;
+import com.telegram.musicplayer.service.PlaylistService;
+import com.telegram.musicplayer.service.TelegramAuthService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,41 +11,33 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/playlists")
+@RequiredArgsConstructor
 public class PlaylistController {
 
-    private final PlaylistRepository playlistRepository;
-    private final UserService userService;
+    private final PlaylistService playlistService;
+    private final TelegramAuthService telegramAuthService;
 
-    public PlaylistController(PlaylistRepository playlistRepository,
-                              UserService userService) {
-        this.playlistRepository = playlistRepository;
-        this.userService = userService;
-    }
-
-    // Получить все плейлисты пользователя
+    /**
+     * Получить плейлисты пользователя
+     */
     @GetMapping
-    public List<Playlist> getAll(
-            @RequestHeader("X-TG-INIT-DATA") String initData) {
-
-        Long telegramId = TelegramInitDataParser.extractUserId(initData);
-        User user = userService.findOrCreateUser(telegramId);
-
-        return playlistRepository.findByUserId(user.getId());
+    public List<Playlist> getPlaylists(
+            @RequestHeader("X-TG-INIT-DATA") String initData
+    ) {
+        Long userId = telegramAuthService.getUserId(initData);
+        return playlistService.getUserPlaylists(userId);
     }
 
-    // Создать плейлист
+    /**
+     * Создать плейлист
+     */
     @PostMapping
-    public Playlist create(
-            @RequestBody Map<String, String> body,
-            @RequestHeader("X-TG-INIT-DATA") String initData) {
-
-        Long telegramId = TelegramInitDataParser.extractUserId(initData);
-        User user = userService.findOrCreateUser(telegramId);
-
-        Playlist playlist = new Playlist();
-        playlist.setName(body.get("name"));
-        playlist.setUser(user);
-
-        return playlistRepository.save(playlist);
+    public Playlist createPlaylist(
+            @RequestHeader("X-TG-INIT-DATA") String initData,
+            @RequestBody Map<String, String> body
+    ) {
+        Long userId = telegramAuthService.getUserId(initData);
+        String name = body.get("name");
+        return playlistService.createPlaylist(userId, name);
     }
 }

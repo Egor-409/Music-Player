@@ -215,7 +215,8 @@ body {
         <!-- PLAYLISTS -->
         <div id="playlists-view" class="view">
             <div class="playlists-grid">
-                <div class="playlist-card">➕ Новый</div>
+                <div class="playlist-card" id="create-playlist">➕ Новый</div>
+
                 <div class="playlist-card">❤️ Избранное</div>
             </div>
         </div>
@@ -295,7 +296,12 @@ function switchView(v){
     playlistsView.classList.toggle("active", v==="playlists");
     btnLibrary.classList.toggle("active", v==="library");
     btnPlaylists.classList.toggle("active", v==="playlists");
+
+    if (v === "playlists") {
+        loadPlaylists();
+    }
 }
+
 
 /* STREAM */
 async function getStreamUrl(id){
@@ -375,6 +381,42 @@ function format(t){
     const m=Math.floor(t/60);
     const s=Math.floor(t%60).toString().padStart(2,"0");
     return `${m}:${s}`;
+}
+async function loadPlaylists() {
+    const r = await fetch(`${apiBase}/api/playlists`, {
+        headers: { "X-TG-INIT-DATA": tg.initData }
+    });
+    const playlists = await r.json();
+    renderPlaylists(playlists);
+}
+
+function renderPlaylists(playlists) {
+    playlistsView.innerHTML = `
+        <div class="playlists-grid">
+            <div class="playlist-card" id="create-playlist">➕ Новый</div>
+            ${playlists.map(p => `
+                <div class="playlist-card">${p.name}</div>
+            `).join("")}
+        </div>
+    `;
+
+    document.getElementById("create-playlist").onclick = createPlaylist;
+}
+
+async function createPlaylist() {
+    const name = prompt("Название плейлиста");
+    if (!name) return;
+
+    await fetch(`${apiBase}/api/playlists`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-TG-INIT-DATA": tg.initData
+        },
+        body: JSON.stringify({ name })
+    });
+
+    loadPlaylists();
 }
 
 loadTracks();

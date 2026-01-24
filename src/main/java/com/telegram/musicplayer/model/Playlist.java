@@ -20,15 +20,15 @@ public class Playlist {
 
     private String name;
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @ManyToMany
     @JoinTable(
-            name = "playlist_tracks",
-            joinColumns = @JoinColumn(name = "playlist_id"),
-            inverseJoinColumns = @JoinColumn(name = "track_id")
+        name = "playlist_tracks",
+        joinColumns = @JoinColumn(name = "playlist_id"),
+        inverseJoinColumns = @JoinColumn(name = "track_id")
     )
     private List<Track> tracks = new ArrayList<>();
-
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
 }
+

@@ -36,7 +36,8 @@ public class TrackService {
                 });
 
         Track track = new Track();
-        track.setUser(user);
+       track.setUserId(telegramUserId);
+
         track.setOriginalName(originalName);
         track.setFilename(filename);
         track.setTelegramFileId(telegramFileId);

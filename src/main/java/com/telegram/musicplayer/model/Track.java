@@ -18,14 +18,13 @@ public class Track {
     // Название файла на сервере
     private String filename;
 
-    // Исходное название файла (как прислал пользователь)
+    // Исходное название файла
     private String originalName;
 
-    // file_id из Telegram, чтобы можно было скачивать
+    // file_id Telegram
     private String telegramFileId;
 
-    // Связь с пользователем (много треков → один пользователь)
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    // Telegram user id
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 }
