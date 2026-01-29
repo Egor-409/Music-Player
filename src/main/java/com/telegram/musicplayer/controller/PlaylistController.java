@@ -12,14 +12,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/playlists")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*") // 🔥 важно для ноутбука
 public class PlaylistController {
 
     private final PlaylistService playlistService;
     private final TelegramAuthService telegramAuthService;
 
-    /**
-     * Получить плейлисты пользователя
-     */
     @GetMapping
     public List<Playlist> getPlaylists(
             @RequestHeader("X-TG-INIT-DATA") String initData
@@ -28,15 +26,13 @@ public class PlaylistController {
         return playlistService.getUserPlaylists(userId);
     }
 
-    /**
-     * Создать плейлист
-     */
     @PostMapping
     public Playlist createPlaylist(
             @RequestHeader("X-TG-INIT-DATA") String initData,
             @RequestBody Map<String, String> body
     ) {
         Long userId = telegramAuthService.getUserId(initData);
+
         String name = body.get("name");
         return playlistService.createPlaylist(userId, name);
     }
