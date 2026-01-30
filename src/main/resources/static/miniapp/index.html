@@ -403,39 +403,15 @@ function renderPlaylists(playlists) {
     document.getElementById("create-playlist").onclick = createPlaylist;
 }
 
-/* ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ */
 async function createPlaylist() {
-    let name = null;
-
-    // Если это Telegram — используем нативный popup
-    if (tg && tg.showPopup) {
-        await new Promise(resolve => {
-            tg.showPopup({
-                title: "Новый плейлист",
-                message: "Введите название",
-                buttons: [
-                    { id: "cancel", type: "cancel", text: "Отмена" },
-                    { id: "ok", type: "default", text: "Создать" }
-                ]
-            }, btn => {
-                if (btn === "ok") {
-                    name = prompt("Название плейлиста");
-                }
-                resolve();
-            });
-        });
-    } else {
-        // Обычный браузер (ПК)
-        name = prompt("Название плейлиста");
-    }
-
+    const name = prompt("Название плейлиста");
     if (!name) return;
 
     await fetch(`${apiBase}/api/playlists`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "X-TG-INIT-DATA": tg?.initData || ""
+            "X-TG-INIT-DATA": tg.initData
         },
         body: JSON.stringify({ name })
     });
