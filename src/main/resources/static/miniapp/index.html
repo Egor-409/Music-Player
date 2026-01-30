@@ -91,29 +91,6 @@ body {
     cursor:pointer;
 }
 
-/* CONTEXT MENU */
-.context-menu {
-    position:fixed;
-    z-index:9999;
-    min-width:200px;
-    background:#1f1f1f;
-    border-radius:12px;
-    box-shadow:0 10px 30px rgba(0,0,0,.6);
-    padding:6px;
-}
-.context-menu button {
-    width:100%;
-    background:none;
-    border:none;
-    color:white;
-    padding:10px 12px;
-    text-align:left;
-    border-radius:8px;
-    cursor:pointer;
-}
-.context-menu button:hover { background:#2a2a2a; }
-.context-menu.hidden { display:none; }
-
 /* MINI PLAYER */
 .mini-player {
     position:fixed;
@@ -125,42 +102,6 @@ body {
     padding:10px 15px;
 }
 .mini-player.hidden { display:none; }
-
-.mini-title {
-    font-size:14px;
-    font-weight:600;
-    margin-bottom:8px;
-}
-
-/* CONTROLS */
-.controls {
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:26px;
-    font-size:30px;
-    margin-bottom:8px;
-}
-.ctrl-btn {
-    background:none;
-    border:none;
-    color:white;
-    cursor:pointer;
-}
-
-/* PROGRESS */
-.progress {
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-size:12px;
-    color:#aaa;
-}
-.progress input[type=range] {
-    flex:1;
-    max-width:65%;
-    accent-color:white;
-}
 
 /* SPA VIEWS */
 .view { display:none; }
@@ -182,8 +123,17 @@ body {
     font-weight:600;
     cursor:pointer;
 }
-.playlist-card:hover {
-    background:#222;
+.playlist-card:hover { background:#222; }
+
+/* MODAL */
+#playlist-modal {
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.6);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:10000;
 }
 
 #audio-player { display:none; }
@@ -207,47 +157,29 @@ body {
             <button class="menu-btn" id="btn-playlists">📂 Плейлисты</button>
         </div>
 
-        <!-- LIBRARY -->
         <div id="library-view" class="view active">
             <div id="track-list"></div>
         </div>
 
-        <!-- PLAYLISTS -->
-        <div id="playlists-view" class="view">
-            <div class="playlists-grid">
-                <div class="playlist-card" id="create-playlist">➕ Новый</div>
-
-                <div class="playlist-card">❤️ Избранное</div>
-            </div>
-        </div>
+        <div id="playlists-view" class="view"></div>
 
     </div>
 </div>
 
-<div class="mini-player hidden" id="mini-player">
-    <div class="mini-title" id="mini-title"></div>
-
-    <div class="controls">
-        <button class="ctrl-btn" id="repeat">🔁</button>
-        <button class="ctrl-btn" id="prev">⏮</button>
-        <button class="ctrl-btn" id="play">▶</button>
-        <button class="ctrl-btn" id="next">⏭</button>
-        <button class="ctrl-btn" id="mini-more">⋯</button>
-    </div>
-
-    <div class="progress">
-        <span id="current">0:00</span>
-        <input type="range" id="progress" value="0" min="0" step="0.1">
-        <span id="duration">0:00</span>
+<!-- MODAL -->
+<div id="playlist-modal">
+    <div style="background:#1a1a1a;padding:20px;border-radius:14px;width:80%;max-width:320px;">
+        <h3 style="margin-top:0">Новый плейлист</h3>
+        <input id="playlist-name-input" placeholder="Название"
+            style="width:100%;padding:10px;border-radius:8px;border:none;background:#222;color:white;margin-bottom:12px;">
+        <button onclick="submitPlaylist()"
+            style="width:100%;padding:10px;border-radius:10px;border:none;background:white;color:black;font-weight:bold;">
+            Создать
+        </button>
     </div>
 </div>
 
-<div id="context-menu" class="context-menu hidden">
-    <button id="delete-track">🗑 Удалить</button>
-    <button>➕ Добавить в плейлист</button>
-</div>
-
-<audio id="audio-player" preload="metadata"></audio>
+<audio id="audio-player"></audio>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -255,34 +187,7 @@ tg.ready();
 tg.expand();
 
 const apiBase = "https://telegram-music-player-uh5o.onrender.com";
-const audio = document.getElementById("audio-player");
 
-const trackListDiv = document.getElementById("track-list");
-const miniTitle = document.getElementById("mini-title");
-const playBtn = document.getElementById("play");
-const prevBtn = document.getElementById("prev");
-const nextBtn = document.getElementById("next");
-const repeatBtn = document.getElementById("repeat");
-const miniMore = document.getElementById("mini-more");
-
-const progress = document.getElementById("progress");
-const currentEl = document.getElementById("current");
-const durationEl = document.getElementById("duration");
-const miniPlayer = document.getElementById("mini-player");
-
-const contextMenu = document.getElementById("context-menu");
-const deleteBtn = document.getElementById("delete-track");
-
-repeatBtn.style.opacity = "0.4";
-
-let tracks = [];
-let currentIndex = -1;
-let repeat = false;
-let contextTrackId = null;
-
-const linkCache = new Map();
-
-/* SPA NAV */
 const btnLibrary = document.getElementById("btn-library");
 const btnPlaylists = document.getElementById("btn-playlists");
 const libraryView = document.getElementById("library-view");
@@ -297,114 +202,33 @@ function switchView(v){
     btnLibrary.classList.toggle("active", v==="library");
     btnPlaylists.classList.toggle("active", v==="playlists");
 
-    if (v === "playlists") {
-        loadPlaylists();
-    }
+    if (v === "playlists") loadPlaylists();
 }
 
-
-/* STREAM */
-async function getStreamUrl(id){
-    if(linkCache.has(id)) return linkCache.get(id);
-    const r = await fetch(`${apiBase}/api/tracks/play/${id}`, {
-        headers:{ "X-TG-INIT-DATA": tg.initData }
-    });
-    const data = await r.json();
-    linkCache.set(id, data.streamUrl);
-    return data.streamUrl;
-}
-
-async function loadTracks(){
-    const r = await fetch(`${apiBase}/api/tracks`, {
-        headers:{ "X-TG-INIT-DATA": tg.initData }
-    });
-    tracks = await r.json();
-    renderTracks();
-}
-
-function renderTracks(){
-    trackListDiv.innerHTML="";
-    tracks.forEach((t,i)=>{
-        const div=document.createElement("div");
-        div.className="track-item";
-        div.innerHTML=`
-            <span>${i+1}</span>
-            <div>
-                <div class="track-title">${t.originalName}</div>
-                <div class="track-artist">${t.performer||"Unknown"}</div>
-            </div>
-            <button class="play-btn">${i===currentIndex&&!audio.paused?"⏸":"▶"}</button>
-            <button class="more-btn">⋯</button>
-        `;
-        div.onclick=()=>playTrack(i);
-        div.querySelector(".play-btn").onclick=e=>{e.stopPropagation();playTrack(i);}
-        div.querySelector(".more-btn").onclick=e=>{e.stopPropagation();openContextMenu(e.currentTarget,t.id);}
-        trackListDiv.appendChild(div);
-    });
-}
-
-async function playTrack(i){
-    currentIndex=i;
-    audio.src=await getStreamUrl(tracks[i].id);
-    await audio.play();
-    miniTitle.innerText=tracks[i].originalName;
-    playBtn.innerText="⏸";
-    miniPlayer.classList.remove("hidden");
-    renderTracks();
-}
-
-playBtn.onclick=()=>{audio.paused?audio.play():audio.pause();renderTracks();}
-nextBtn.onclick=()=>currentIndex<tracks.length-1&&playTrack(currentIndex+1);
-prevBtn.onclick=()=>currentIndex>0&&playTrack(currentIndex-1);
-repeatBtn.onclick=()=>{repeat=!repeat;audio.loop=repeat;repeatBtn.style.opacity=repeat?"1":"0.4";}
-
-audio.onended=()=>!repeat&&nextBtn.click();
-audio.onloadedmetadata=()=>{progress.max=audio.duration;durationEl.innerText=format(audio.duration);}
-audio.ontimeupdate=()=>{progress.value=audio.currentTime;currentEl.innerText=format(audio.currentTime);}
-progress.oninput=()=>audio.currentTime=progress.value;
-
-/* CONTEXT */
-function openContextMenu(btn,id){
-    contextTrackId=id;
-    const r=btn.getBoundingClientRect();
-    contextMenu.style.top=`${r.bottom+6}px`;
-    contextMenu.style.left=`${r.right-200}px`;
-    contextMenu.classList.remove("hidden");
-}
-document.addEventListener("click",()=>contextMenu.classList.add("hidden"));
-deleteBtn.onclick=async()=>{
-    await fetch(`${apiBase}/api/tracks/${contextTrackId}`,{method:"DELETE"});
-    loadTracks();
-};
-
-function format(t){
-    const m=Math.floor(t/60);
-    const s=Math.floor(t%60).toString().padStart(2,"0");
-    return `${m}:${s}`;
-}
 async function loadPlaylists() {
     const r = await fetch(`${apiBase}/api/playlists`, {
         headers: { "X-TG-INIT-DATA": tg.initData }
     });
     const playlists = await r.json();
-    renderPlaylists(playlists);
-}
 
-function renderPlaylists(playlists) {
     playlistsView.innerHTML = `
         <div class="playlists-grid">
             <div class="playlist-card" id="create-playlist">➕ Новый</div>
-            ${playlists.map(p => `
-                <div class="playlist-card">${p.name}</div>
-            `).join("")}
+            ${playlists.map(p => `<div class="playlist-card">${p.name}</div>`).join("")}
         </div>
     `;
 
     document.getElementById("create-playlist").onclick = createPlaylist;
 }
 
-async function createPlaylist() {
-    const name = prompt("Название плейлиста");
+function createPlaylist() {
+    document.getElementById("playlist-modal").style.display = "flex";
+    document.getElementById("playlist-name-input").focus();
+}
+
+async function submitPlaylist() {
+    const input = document.getElementById("playlist-name-input");
+    const name = input.value.trim();
     if (!name) return;
 
     await fetch(`${apiBase}/api/playlists`, {
@@ -416,10 +240,10 @@ async function createPlaylist() {
         body: JSON.stringify({ name })
     });
 
+    input.value = "";
+    document.getElementById("playlist-modal").style.display = "none";
     loadPlaylists();
 }
-
-loadTracks();
 </script>
 
 </body>
