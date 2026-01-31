@@ -187,6 +187,62 @@ body {
 }
 
 #audio-player { display:none; }
+
+/* PLAYLIST MODAL */
+.modal-overlay {
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.7);
+    z-index:10000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.modal-overlay.hidden { display:none; }
+.modal-dialog {
+    background:#1f1f1f;
+    border-radius:14px;
+    padding:20px;
+    min-width:280px;
+    max-width:90vw;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);
+}
+.modal-dialog h3 { margin:0 0 16px 0; font-size:18px; }
+.modal-dialog input {
+    width:100%;
+    padding:12px 14px;
+    border-radius:8px;
+    border:1px solid #444;
+    background:#222;
+    color:#fff;
+    font-size:16px;
+    box-sizing:border-box;
+}
+.modal-dialog input:focus {
+    outline:none;
+    border-color:#666;
+}
+.modal-buttons {
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+}
+.modal-buttons button {
+    flex:1;
+    padding:10px 16px;
+    border-radius:8px;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+}
+.modal-buttons .btn-cancel {
+    background:#333;
+    color:#fff;
+}
+.modal-buttons .btn-confirm {
+    background:#fff;
+    color:#000;
+}
 </style>
 </head>
 
@@ -215,8 +271,7 @@ body {
         <!-- PLAYLISTS -->
         <div id="playlists-view" class="view">
             <div class="playlists-grid">
-                <div class="playlist-card" id="create-playlist">➕ Новый</div>
-
+                <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
                 <div class="playlist-card">❤️ Избранное</div>
             </div>
         </div>
@@ -245,6 +300,18 @@ body {
 <div id="context-menu" class="context-menu hidden">
     <button id="delete-track">🗑 Удалить</button>
     <button>➕ Добавить в плейлист</button>
+</div>
+
+<!-- Playlist name modal (works on desktop, no prompt()) -->
+<div id="playlist-modal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+        <h3>Название плейлиста</h3>
+        <input type="text" id="playlist-name-input" placeholder="Введите название..." maxlength="100">
+        <div class="modal-buttons">
+            <button class="btn-cancel" id="playlist-modal-cancel">Отмена</button>
+            <button class="btn-confirm" id="playlist-modal-confirm">Создать</button>
+        </div>
+    </div>
 </div>
 
 <audio id="audio-player" preload="metadata"></audio>
@@ -383,30 +450,70 @@ function format(t){
     return `${m}:${s}`;
 }
 async function loadPlaylists() {
-    const r = await fetch(`${apiBase}/api/playlists`, {
-        headers: { "X-TG-INIT-DATA": tg.initData }
-    });
-    const playlists = await r.json();
-    renderPlaylists(playlists);
+    try {
+        const r = await fetch(`${apiBase}/api/playlists`, {
+            headers: { "X-TG-INIT-DATA": tg.initData }
+        });
+        const playlists = await r.json();
+        renderPlaylists(playlists || []);
+    } catch (e) {
+        renderPlaylists([]);
+    }
 }
 
+/* Event delegation: create-playlist works on desktop and mobile */
+playlistsView.addEventListener("click", (e) => {
+    const card = e.target.closest("#create-playlist");
+    if (card) {
+        e.preventDefault();
+        openCreatePlaylistModal();
+    }
+});
+playlistsView.addEventListener("keydown", (e) => {
+    const card = e.target.closest("#create-playlist");
+    if (card && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        openCreatePlaylistModal();
+    }
+});
+
 function renderPlaylists(playlists) {
+    playlists = playlists || [];
     playlistsView.innerHTML = `
         <div class="playlists-grid">
-            <div class="playlist-card" id="create-playlist">➕ Новый</div>
+            <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
             ${playlists.map(p => `
                 <div class="playlist-card">${p.name}</div>
             `).join("")}
         </div>
     `;
-
-    document.getElementById("create-playlist").onclick = createPlaylist;
 }
 
-async function createPlaylist() {
-    const name = prompt("Название плейлиста");
-    if (!name) return;
+function openCreatePlaylistModal() {
+    const modal = document.getElementById("playlist-modal");
+    const input = document.getElementById("playlist-name-input");
+    modal.classList.remove("hidden");
+    input.value = "";
+    input.focus();
 
+    const doCreate = () => {
+        const name = input.value.trim();
+        modal.classList.add("hidden");
+        if (name) createPlaylist(name);
+    };
+
+    const cancel = () => modal.classList.add("hidden");
+
+    document.getElementById("playlist-modal-confirm").onclick = doCreate;
+    document.getElementById("playlist-modal-cancel").onclick = cancel;
+    input.onkeydown = (e) => {
+        if (e.key === "Enter") doCreate();
+        if (e.key === "Escape") cancel();
+    };
+    modal.onclick = (e) => { if (e.target === modal) cancel(); };
+}
+
+async function createPlaylist(name) {
     await fetch(`${apiBase}/api/playlists`, {
         method: "POST",
         headers: {
