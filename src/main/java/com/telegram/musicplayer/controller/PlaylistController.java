@@ -36,4 +36,13 @@ public class PlaylistController {
         String name = body.get("name");
         return playlistService.createPlaylist(userId, name);
     }
+
+    @DeleteMapping("/{id}")
+    public void deletePlaylist(
+            @RequestHeader("X-TG-INIT-DATA") String initData,
+            @PathVariable Long id
+    ) {
+        Long userId = telegramAuthService.getUserId(initData);
+        playlistService.deletePlaylist(userId, id);
+    }
 }

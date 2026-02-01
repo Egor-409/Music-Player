@@ -28,4 +28,13 @@ public class PlaylistService {
 
         return playlistRepository.save(playlist);
     }
+
+    public void deletePlaylist(Long userId, Long playlistId) {
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new RuntimeException("Playlist not found"));
+        if (!playlist.getUserId().equals(userId)) {
+            throw new RuntimeException("Forbidden");
+        }
+        playlistRepository.delete(playlist);
+    }
 }

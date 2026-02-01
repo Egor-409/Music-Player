@@ -181,9 +181,30 @@ body {
     justify-content:center;
     font-weight:600;
     cursor:pointer;
+    position:relative;
 }
 .playlist-card:hover {
     background:#222;
+}
+.playlist-card-content {
+    text-align:center;
+    padding:20px;
+}
+.playlist-more-btn {
+    position:absolute;
+    top:8px;
+    right:8px;
+    background:none;
+    border:none;
+    color:#aaa;
+    font-size:20px;
+    cursor:pointer;
+    padding:4px;
+    border-radius:6px;
+}
+.playlist-more-btn:hover {
+    color:#fff;
+    background:rgba(255,255,255,.1);
 }
 
 #audio-player { display:none; }
@@ -302,6 +323,10 @@ body {
     <button>➕ Добавить в плейлист</button>
 </div>
 
+<div id="playlist-context-menu" class="context-menu hidden">
+    <button id="delete-playlist-btn">🗑 Удалить плейлист</button>
+</div>
+
 <!-- Playlist name modal (works on desktop, no prompt()) -->
 <div id="playlist-modal" class="modal-overlay hidden">
     <div class="modal-dialog">
@@ -346,6 +371,7 @@ let tracks = [];
 let currentIndex = -1;
 let repeat = false;
 let contextTrackId = null;
+let contextPlaylistId = null;
 
 const linkCache = new Map();
 
@@ -438,7 +464,10 @@ function openContextMenu(btn,id){
     contextMenu.style.left=`${r.right-200}px`;
     contextMenu.classList.remove("hidden");
 }
-document.addEventListener("click",()=>contextMenu.classList.add("hidden"));
+document.addEventListener("click",()=>{
+    contextMenu.classList.add("hidden");
+    document.getElementById("playlist-context-menu").classList.add("hidden");
+});
 deleteBtn.onclick=async()=>{
     await fetch(`${apiBase}/api/tracks/${contextTrackId}`,{method:"DELETE"});
     loadTracks();
@@ -483,11 +512,46 @@ function renderPlaylists(playlists) {
         <div class="playlists-grid">
             <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
             ${playlists.map(p => `
-                <div class="playlist-card">${p.name}</div>
+                <div class="playlist-card" data-playlist-id="${p.id}">
+                    <span class="playlist-card-content">${escapeHtml(p.name)}</span>
+                    <button class="playlist-more-btn" data-playlist-id="${p.id}" aria-label="Меню">⋯</button>
+                </div>
             `).join("")}
         </div>
     `;
+
+    playlistsView.querySelectorAll(".playlist-more-btn").forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            openPlaylistContextMenu(e.currentTarget, Number(btn.dataset.playlistId));
+        };
+    });
 }
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function openPlaylistContextMenu(btn, playlistId) {
+    contextPlaylistId = playlistId;
+    const menu = document.getElementById("playlist-context-menu");
+    const r = btn.getBoundingClientRect();
+    menu.style.top = `${r.bottom + 6}px`;
+    menu.style.left = `${r.right - 180}px`;
+    menu.classList.remove("hidden");
+}
+
+document.getElementById("delete-playlist-btn").onclick = async () => {
+    if (!contextPlaylistId) return;
+    await fetch(`${apiBase}/api/playlists/${contextPlaylistId}`, {
+        method: "DELETE",
+        headers: { "X-TG-INIT-DATA": tg.initData }
+    });
+    document.getElementById("playlist-context-menu").classList.add("hidden");
+    loadPlaylists();
+};
 
 function openCreatePlaylistModal() {
     const modal = document.getElementById("playlist-modal");
