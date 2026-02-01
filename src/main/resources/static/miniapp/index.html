@@ -228,6 +228,14 @@ body {
 .playlist-back-btn:hover { color:#fff; }
 .playlist-detail-title { font-size:18px; margin-bottom:16px; }
 .playlist-empty { color:#888; padding:24px; text-align:center; }
+.add-track-banner {
+    background:#2a4a6a;
+    color:#fff;
+    padding:10px 14px;
+    border-radius:8px;
+    margin-bottom:12px;
+    font-size:14px;
+}
 
 #audio-player { display:none; }
 
@@ -313,6 +321,7 @@ body {
 
         <!-- PLAYLISTS -->
         <div id="playlists-view" class="view">
+            <div id="add-track-banner" class="add-track-banner hidden">Выберите плейлист для добавления трека</div>
             <div id="playlists-grid" class="playlists-grid">
                 <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
                 <div class="playlist-card">❤️ Избранное</div>
@@ -347,7 +356,7 @@ body {
 
 <div id="context-menu" class="context-menu hidden">
     <button id="delete-track">🗑 Удалить</button>
-    <button>➕ Добавить в плейлист</button>
+    <button id="add-to-playlist-btn">➕ Добавить в плейлист</button>
 </div>
 
 <div id="playlist-context-menu" class="context-menu hidden">
@@ -400,6 +409,7 @@ let repeat = false;
 let contextTrackId = null;
 let contextPlaylistId = null;
 let currentPlaylistTracks = null;
+let pendingTrackIdToAdd = null;
 
 const linkCache = new Map();
 
@@ -426,6 +436,12 @@ function switchView(v){
         loadPlaylists();
         playlistsGrid.classList.remove("hidden-in-playlist");
         playlistDetail.classList.remove("active");
+        const banner = document.getElementById("add-track-banner");
+        if (pendingTrackIdToAdd) banner.classList.remove("hidden");
+        else banner.classList.add("hidden");
+    } else {
+        pendingTrackIdToAdd = null;
+        document.getElementById("add-track-banner").classList.add("hidden");
     }
 }
 
@@ -508,6 +524,13 @@ deleteBtn.onclick=async()=>{
     loadTracks();
 };
 
+document.getElementById("add-to-playlist-btn").onclick = () => {
+    contextMenu.classList.add("hidden");
+    pendingTrackIdToAdd = contextTrackId;
+    switchView("playlists");
+    document.getElementById("add-track-banner").classList.remove("hidden");
+};
+
 function format(t){
     const m=Math.floor(t/60);
     const s=Math.floor(t%60).toString().padStart(2,"0");
@@ -561,9 +584,30 @@ function renderPlaylists(playlists) {
     });
 
     playlistsGrid.querySelectorAll(".playlist-card[data-playlist-id]").forEach(card => {
-        card.onclick = (e) => {
+        card.onclick = async (e) => {
             if (e.target.closest(".playlist-more-btn")) return;
-            openPlaylistDetail(Number(card.dataset.playlistId));
+            const playlistId = Number(card.dataset.playlistId);
+            if (pendingTrackIdToAdd) {
+                try {
+                    await fetch(`${apiBase}/api/playlists/${playlistId}/tracks`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-TG-INIT-DATA": tg.initData
+                        },
+                        body: JSON.stringify({ trackId: pendingTrackIdToAdd })
+                    });
+                    if (tg.showAlert) tg.showAlert("Трек добавлен в плейлист");
+                    else alert("Трек добавлен в плейлист");
+                } catch (err) {
+                    if (tg.showAlert) tg.showAlert("Ошибка добавления");
+                    else alert("Ошибка добавления");
+                }
+                pendingTrackIdToAdd = null;
+                document.getElementById("add-track-banner").classList.add("hidden");
+            } else {
+                openPlaylistDetail(playlistId);
+            }
         };
     });
 }
