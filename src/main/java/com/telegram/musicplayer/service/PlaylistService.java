@@ -17,6 +17,15 @@ public class PlaylistService {
         return playlistRepository.findByUserId(userId);
     }
 
+    public Playlist getPlaylistWithTracks(Long userId, Long playlistId) {
+        Playlist playlist = playlistRepository.findByIdWithTracks(playlistId)
+                .orElseThrow(() -> new RuntimeException("Playlist not found"));
+        if (!playlist.getUserId().equals(userId)) {
+            throw new RuntimeException("Forbidden");
+        }
+        return playlist;
+    }
+
     public Playlist createPlaylist(Long userId, String name) {
         if (name == null || name.trim().isEmpty()) {
             throw new RuntimeException("Playlist name is empty");

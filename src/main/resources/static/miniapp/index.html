@@ -207,6 +207,28 @@ body {
     background:rgba(255,255,255,.1);
 }
 
+/* PLAYLIST DETAIL */
+.playlist-detail {
+    display:none;
+}
+.playlist-detail.active { display:block; }
+.playlists-grid.hidden-in-playlist { display:none; }
+.playlist-back-btn {
+    background:none;
+    border:none;
+    color:#aaa;
+    font-size:16px;
+    cursor:pointer;
+    padding:8px 0;
+    margin-bottom:12px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+.playlist-back-btn:hover { color:#fff; }
+.playlist-detail-title { font-size:18px; margin-bottom:16px; }
+.playlist-empty { color:#888; padding:24px; text-align:center; }
+
 #audio-player { display:none; }
 
 /* PLAYLIST MODAL */
@@ -291,9 +313,14 @@ body {
 
         <!-- PLAYLISTS -->
         <div id="playlists-view" class="view">
-            <div class="playlists-grid">
+            <div id="playlists-grid" class="playlists-grid">
                 <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
                 <div class="playlist-card">❤️ Избранное</div>
+            </div>
+            <div id="playlist-detail" class="playlist-detail">
+                <button class="playlist-back-btn" id="playlist-back-btn">← Назад</button>
+                <div class="playlist-detail-title" id="playlist-detail-title"></div>
+                <div id="playlist-track-list"></div>
             </div>
         </div>
 
@@ -372,6 +399,7 @@ let currentIndex = -1;
 let repeat = false;
 let contextTrackId = null;
 let contextPlaylistId = null;
+let currentPlaylistTracks = null;
 
 const linkCache = new Map();
 
@@ -380,6 +408,10 @@ const btnLibrary = document.getElementById("btn-library");
 const btnPlaylists = document.getElementById("btn-playlists");
 const libraryView = document.getElementById("library-view");
 const playlistsView = document.getElementById("playlists-view");
+const playlistsGrid = document.getElementById("playlists-grid");
+const playlistDetail = document.getElementById("playlist-detail");
+const playlistDetailTitle = document.getElementById("playlist-detail-title");
+const playlistTrackList = document.getElementById("playlist-track-list");
 
 btnLibrary.onclick = () => switchView("library");
 btnPlaylists.onclick = () => switchView("playlists");
@@ -392,6 +424,8 @@ function switchView(v){
 
     if (v === "playlists") {
         loadPlaylists();
+        playlistsGrid.classList.remove("hidden-in-playlist");
+        playlistDetail.classList.remove("active");
     }
 }
 
@@ -444,9 +478,10 @@ async function playTrack(i){
     playBtn.innerText="⏸";
     miniPlayer.classList.remove("hidden");
     renderTracks();
+    updatePlaylistTrackButtons();
 }
 
-playBtn.onclick=()=>{audio.paused?audio.play():audio.pause();renderTracks();}
+playBtn.onclick=()=>{audio.paused?audio.play():audio.pause();renderTracks();updatePlaylistTrackButtons();}
 nextBtn.onclick=()=>currentIndex<tracks.length-1&&playTrack(currentIndex+1);
 prevBtn.onclick=()=>currentIndex>0&&playTrack(currentIndex-1);
 repeatBtn.onclick=()=>{repeat=!repeat;audio.loop=repeat;repeatBtn.style.opacity=repeat?"1":"0.4";}
@@ -508,25 +543,91 @@ playlistsView.addEventListener("keydown", (e) => {
 
 function renderPlaylists(playlists) {
     playlists = playlists || [];
-    playlistsView.innerHTML = `
-        <div class="playlists-grid">
-            <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
-            ${playlists.map(p => `
-                <div class="playlist-card" data-playlist-id="${p.id}">
-                    <span class="playlist-card-content">${escapeHtml(p.name)}</span>
-                    <button class="playlist-more-btn" data-playlist-id="${p.id}" aria-label="Меню">⋯</button>
-                </div>
-            `).join("")}
-        </div>
+    playlistsGrid.innerHTML = `
+        <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
+        ${playlists.map(p => `
+            <div class="playlist-card" data-playlist-id="${p.id}" data-playlist-name="${escapeHtml(p.name)}">
+                <span class="playlist-card-content">${escapeHtml(p.name)}</span>
+                <button class="playlist-more-btn" data-playlist-id="${p.id}" aria-label="Меню">⋯</button>
+            </div>
+        `).join("")}
     `;
 
-    playlistsView.querySelectorAll(".playlist-more-btn").forEach(btn => {
+    playlistsGrid.querySelectorAll(".playlist-more-btn").forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             openPlaylistContextMenu(e.currentTarget, Number(btn.dataset.playlistId));
         };
     });
+
+    playlistsGrid.querySelectorAll(".playlist-card[data-playlist-id]").forEach(card => {
+        card.onclick = (e) => {
+            if (e.target.closest(".playlist-more-btn")) return;
+            openPlaylistDetail(Number(card.dataset.playlistId));
+        };
+    });
 }
+
+async function openPlaylistDetail(playlistId) {
+    try {
+        const r = await fetch(`${apiBase}/api/playlists/${playlistId}`, {
+            headers: { "X-TG-INIT-DATA": tg.initData }
+        });
+        const playlist = await r.json();
+        playlistDetailTitle.textContent = playlist.name || "Плейлист";
+        const list = playlist.tracks || [];
+        if (list.length === 0) {
+            currentPlaylistTracks = null;
+            playlistTrackList.innerHTML = '<div class="playlist-empty">Пусто</div>';
+        } else {
+            currentPlaylistTracks = list;
+            playlistTrackList.innerHTML = list.map((t, i) => `
+                <div class="track-item" data-track-idx="${i}">
+                    <span>${i + 1}</span>
+                    <div>
+                        <div class="track-title">${escapeHtml(t.originalName || t.filename || "Без названия")}</div>
+                        <div class="track-artist">${escapeHtml(t.performer || "Unknown") || "Unknown"}</div>
+                    </div>
+                    <button class="play-btn">${i === currentIndex && !audio.paused ? "⏸" : "▶"}</button>
+                    <button class="more-btn">⋯</button>
+                </div>
+            `).join("");
+            playlistTrackList.querySelectorAll(".track-item").forEach((row, i) => {
+                const trackData = list[i];
+                row.onclick = () => playPlaylistTrack(list, i);
+                row.querySelector(".play-btn").onclick = e => { e.stopPropagation(); playPlaylistTrack(list, i); };
+                row.querySelector(".more-btn").onclick = e => { e.stopPropagation(); openContextMenu(e.currentTarget, trackData.id); };
+            });
+        }
+        playlistsGrid.classList.add("hidden-in-playlist");
+        playlistDetail.classList.add("active");
+    } catch (e) {
+        currentPlaylistTracks = null;
+        playlistTrackList.innerHTML = '<div class="playlist-empty">Ошибка загрузки</div>';
+        playlistsGrid.classList.add("hidden-in-playlist");
+        playlistDetail.classList.add("active");
+    }
+}
+
+function playPlaylistTrack(playlistTracks, i) {
+    tracks = playlistTracks;
+    currentIndex = i;
+    currentPlaylistTracks = playlistTracks;
+    playTrack(i);
+    updatePlaylistTrackButtons();
+}
+
+function updatePlaylistTrackButtons() {
+    if (!currentPlaylistTracks || !playlistDetail.classList.contains("active")) return;
+    playlistTrackList.querySelectorAll(".play-btn").forEach((btn, i) => {
+        btn.textContent = i === currentIndex && !audio.paused ? "⏸" : "▶";
+    });
+}
+
+document.getElementById("playlist-back-btn").onclick = () => {
+    playlistDetail.classList.remove("active");
+    playlistsGrid.classList.remove("hidden-in-playlist");
+};
 
 function escapeHtml(text) {
     const div = document.createElement("div");

@@ -37,6 +37,15 @@ public class PlaylistController {
         return playlistService.createPlaylist(userId, name);
     }
 
+    @GetMapping("/{id}")
+    public Playlist getPlaylist(
+            @RequestHeader("X-TG-INIT-DATA") String initData,
+            @PathVariable Long id
+    ) {
+        Long userId = telegramAuthService.getUserId(initData);
+        return playlistService.getPlaylistWithTracks(userId, id);
+    }
+
     @DeleteMapping("/{id}")
     public void deletePlaylist(
             @RequestHeader("X-TG-INIT-DATA") String initData,
