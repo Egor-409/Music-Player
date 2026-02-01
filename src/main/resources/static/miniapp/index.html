@@ -294,6 +294,11 @@ body {
     background:#fff;
     color:#000;
 }
+
+/* generic hidden helper */
+.hidden { display: none; }
+
+#playlist-track-list { max-height: 55vh; overflow:auto; padding-right:6px; }
 </style>
 </head>
 
@@ -442,6 +447,9 @@ function switchView(v){
     } else {
         pendingTrackIdToAdd = null;
         document.getElementById("add-track-banner").classList.add("hidden");
+        // When switching back to the library ensure we load the full user tracks
+        // (fixes case where 'tracks' was replaced by a playlist's tracks)
+        loadTracks();
     }
 }
 
@@ -599,6 +607,13 @@ function renderPlaylists(playlists) {
                     });
                     if (tg.showAlert) tg.showAlert("Трек добавлен в плейлист");
                     else alert("Трек добавлен в плейлист");
+                    // After adding, open that playlist's detail so the user sees the updated list
+                    pendingTrackIdToAdd = null;
+                    document.getElementById("add-track-banner").classList.add("hidden");
+                    await openPlaylistDetail(playlistId);
+                    // ensure scroll to bottom so the newly added track is visible
+                    requestAnimationFrame(() => { playlistTrackList.scrollTop = playlistTrackList.scrollHeight; });
+                    return;
                 } catch (err) {
                     if (tg.showAlert) tg.showAlert("Ошибка добавления");
                     else alert("Ошибка добавления");
