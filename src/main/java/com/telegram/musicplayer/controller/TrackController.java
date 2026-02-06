@@ -38,10 +38,10 @@ public List<Track> getTracksForMiniApp(
         @RequestHeader("X-TG-INIT-DATA") String initData
 ) {
     // просто валидируем Telegram
-    telegramAuthService.parseAndValidate(initData);
-
-    // 🔥 временно возвращаем ВСЕ треки
-    return trackService.getTracksByUser(null);
+    // validate and extract user id from initData
+    Long userId = telegramAuthService.getUserId(initData);
+    // return only user's tracks
+    return trackService.getTracksByUser(userId);
 }
 
     // ===================== MINI APP: ПОЛУЧИТЬ URL ДЛЯ ПРОИГРЫВАНИЯ =====================

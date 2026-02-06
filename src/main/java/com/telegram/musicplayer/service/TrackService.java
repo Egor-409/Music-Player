@@ -60,7 +60,8 @@ public class TrackService {
 
     // ---------- ВСЕ ТРЕКИ ПОЛЬЗОВАТЕЛЯ ----------
     public List<Track> getTracksByUser(Long userId) {
-         return trackRepository.findAll();
+        if (userId == null) return trackRepository.findAll();
+        return trackRepository.findByUser_Id(userId);
     }
 
     // ---------- УДАЛЕНИЕ ----------

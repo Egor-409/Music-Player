@@ -410,6 +410,8 @@ let contextTrackId = null;
 let contextPlaylistId = null;
 let currentPlaylistTracks = null;
 let pendingTrackIdToAdd = null;
+// Separate playback queue so playing from a playlist doesn't overwrite the library view
+let playbackQueue = [];
 
 const linkCache = new Map();
 
@@ -476,7 +478,7 @@ function renderTracks(){
                 <div class="track-title">${t.originalName}</div>
                 <div class="track-artist">${t.performer||"Unknown"}</div>
             </div>
-            <button class="play-btn">${i===currentIndex&&!audio.paused?"⏸":"▶"}</button>
+            <button class="play-btn">${(playbackQueue[currentIndex] && playbackQueue[currentIndex].id===t.id) && !audio.paused?"⏸":"▶"}</button>
             <button class="more-btn">⋯</button>
         `;
         div.onclick=()=>playTrack(i);
@@ -486,20 +488,24 @@ function renderTracks(){
     });
 }
 
-async function playTrack(i){
-    currentIndex=i;
-    audio.src=await getStreamUrl(tracks[i].id);
+// Play a track by index from a given queue (defaults to library 'tracks')
+async function playTrack(i, queue){
+    const q = queue || tracks;
+    playbackQueue = q;
+    currentIndex = i;
+    const track = playbackQueue[currentIndex];
+    audio.src = await getStreamUrl(track.id);
     await audio.play();
-    miniTitle.innerText=tracks[i].originalName;
-    playBtn.innerText="⏸";
+    miniTitle.innerText = track.originalName || track.filename || "Track";
+    playBtn.innerText = "⏸";
     miniPlayer.classList.remove("hidden");
     renderTracks();
     updatePlaylistTrackButtons();
 }
 
 playBtn.onclick=()=>{audio.paused?audio.play():audio.pause();renderTracks();updatePlaylistTrackButtons();}
-nextBtn.onclick=()=>currentIndex<tracks.length-1&&playTrack(currentIndex+1);
-prevBtn.onclick=()=>currentIndex>0&&playTrack(currentIndex-1);
+nextBtn.onclick=()=>currentIndex<playbackQueue.length-1&&playTrack(currentIndex+1, playbackQueue);
+prevBtn.onclick=()=>currentIndex>0&&playTrack(currentIndex-1, playbackQueue);
 repeatBtn.onclick=()=>{repeat=!repeat;audio.loop=repeat;repeatBtn.style.opacity=repeat?"1":"0.4";}
 
 audio.onended=()=>!repeat&&nextBtn.click();
@@ -654,17 +660,18 @@ async function openPlaylistDetail(playlistId) {
 }
 
 function playPlaylistTrack(playlistTracks, i) {
-    tracks = playlistTracks;
-    currentIndex = i;
+    // don't overwrite the library `tracks` array — use a separate playback queue
     currentPlaylistTracks = playlistTracks;
-    playTrack(i);
+    playTrack(i, playlistTracks);
     updatePlaylistTrackButtons();
 }
 
 function updatePlaylistTrackButtons() {
     if (!currentPlaylistTracks || !playlistDetail.classList.contains("active")) return;
     playlistTrackList.querySelectorAll(".play-btn").forEach((btn, i) => {
-        btn.textContent = i === currentIndex && !audio.paused ? "⏸" : "▶";
+        const playingId = playbackQueue[currentIndex] ? playbackQueue[currentIndex].id : null;
+        const rowTrack = currentPlaylistTracks[i];
+        btn.textContent = (playingId && rowTrack && rowTrack.id === playingId && !audio.paused) ? "⏸" : "▶";
     });
 }
 
