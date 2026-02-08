@@ -61,6 +61,21 @@ public class PlaylistController {
         playlistService.addTrackToPlaylist(userId, id, trackId);
     }
 
+    @DeleteMapping("/{id}/tracks")
+    public void removeTrackFromPlaylist(
+            @RequestHeader("X-TG-INIT-DATA") String initData,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body
+    ) {
+        Long userId = telegramAuthService.getUserId(initData);
+        Object trackIdObj = body.get("trackId");
+        if (trackIdObj == null) {
+            throw new RuntimeException("trackId is required");
+        }
+        Long trackId = trackIdObj instanceof Number ? ((Number) trackIdObj).longValue() : Long.parseLong(trackIdObj.toString());
+        playlistService.removeTrackFromPlaylist(userId, id, trackId);
+    }
+
     @DeleteMapping("/{id}")
     public void deletePlaylist(
             @RequestHeader("X-TG-INIT-DATA") String initData,

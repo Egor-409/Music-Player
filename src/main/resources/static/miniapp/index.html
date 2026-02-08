@@ -412,6 +412,8 @@ let currentPlaylistTracks = null;
 let pendingTrackIdToAdd = null;
 // Separate playback queue so playing from a playlist doesn't overwrite the library view
 let playbackQueue = [];
+// currently opened playlist id in the playlist detail view
+let currentPlaylistId = null;
 
 const linkCache = new Map();
 
@@ -525,9 +527,39 @@ document.addEventListener("click",()=>{
     contextMenu.classList.add("hidden");
     document.getElementById("playlist-context-menu").classList.add("hidden");
 });
+
 deleteBtn.onclick=async()=>{
-    await fetch(`${apiBase}/api/tracks/${contextTrackId}`,{method:"DELETE"});
-    loadTracks();
+    // If playlist detail is open and we have a currentPlaylistId, remove the track from the playlist only
+    if (playlistDetail.classList.contains("active") && currentPlaylistId) {
+        try {
+            await fetch(`${apiBase}/api/playlists/${currentPlaylistId}/tracks`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-TG-INIT-DATA": tg.initData
+                },
+                body: JSON.stringify({ trackId: contextTrackId })
+            });
+            // refresh playlist detail
+            await openPlaylistDetail(currentPlaylistId);
+        } catch (err) {
+            if (tg.showAlert) tg.showAlert("Ошибка удаления из плейлиста");
+            else alert("Ошибка удаления из плейлиста");
+        }
+    } else {
+        // delete track entity globally
+        try {
+            await fetch(`${apiBase}/api/tracks/${contextTrackId}`,{method:"DELETE"});
+            // refresh library
+            loadTracks();
+            // also refresh playlist detail if open, to reflect removal
+            if (currentPlaylistId) await openPlaylistDetail(currentPlaylistId);
+        } catch (err) {
+            if (tg.showAlert) tg.showAlert("Ошибка удаления трека");
+            else alert("Ошибка удаления трека");
+        }
+    }
+    contextMenu.classList.add("hidden");
 };
 
 document.getElementById("add-to-playlist-btn").onclick = () => {
@@ -624,7 +656,8 @@ async function openPlaylistDetail(playlistId) {
             headers: { "X-TG-INIT-DATA": tg.initData }
         });
         const playlist = await r.json();
-        playlistDetailTitle.textContent = playlist.name || "Плейлист";
+    playlistDetailTitle.textContent = playlist.name || "Плейлист";
+    currentPlaylistId = playlistId;
         const list = playlist.tracks || [];
         if (list.length === 0) {
             currentPlaylistTracks = null;
@@ -678,6 +711,7 @@ function updatePlaylistTrackButtons() {
 document.getElementById("playlist-back-btn").onclick = () => {
     playlistDetail.classList.remove("active");
     playlistsGrid.classList.remove("hidden-in-playlist");
+    currentPlaylistId = null;
 };
 
 function escapeHtml(text) {

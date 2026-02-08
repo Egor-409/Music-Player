@@ -66,4 +66,16 @@ public class PlaylistService {
             playlistRepository.save(playlist);
         }
     }
+
+    public void removeTrackFromPlaylist(Long userId, Long playlistId, Long trackId) {
+        Playlist playlist = playlistRepository.findByIdWithTracks(playlistId)
+                .orElseThrow(() -> new RuntimeException("Playlist not found"));
+        if (!playlist.getUserId().equals(userId)) {
+            throw new RuntimeException("Forbidden");
+        }
+        boolean removed = playlist.getTracks().removeIf(t -> t.getId().equals(trackId));
+        if (removed) {
+            playlistRepository.save(playlist);
+        }
+    }
 }
