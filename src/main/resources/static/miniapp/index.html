@@ -70,8 +70,38 @@ body {
 }
 .track-item:hover { background:#1b1b1b; }
 
-.track-title { font-size:14px; font-weight:600; }
+.track-title-cell {
+    min-width: 0;
+    overflow: hidden;
+}
+.track-title-wrap {
+    overflow: hidden;
+    min-width: 0;
+}
+.track-title-wrap.marquee {
+    display: inline-flex;
+    width: max-content;
+    animation: track-title-scroll 14s linear infinite;
+}
+.track-title-wrap.marquee .track-title {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding-right: 2em;
+}
+.track-title {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.track-title-wrap:not(.marquee) .track-title {
+    padding-right: 0;
+}
+@keyframes track-title-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
 .track-artist { font-size:12px; color:#aaa; }
+.track-artist:empty { display: none; }
 
 .play-btn {
     width:36px;
@@ -116,50 +146,63 @@ body {
 
 /* MINI PLAYER */
 .mini-player {
-    position:fixed;
-    bottom:0;
-    left:0;
-    width:100%;
-    background:#1b1b1b;
-    border-top:1px solid #333;
-    padding:10px 15px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #1b1b1b;
+    border-top: 1px solid #333;
+    padding: 12px 16px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
 }
-.mini-player.hidden { display:none; }
+.mini-player.hidden { display: none; }
 
+.mini-title-wrap {
+    overflow: hidden;
+    min-height: 1.4em;
+}
 .mini-title {
-    font-size:14px;
-    font-weight:600;
-    margin-bottom:8px;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* CONTROLS */
 .controls {
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:26px;
-    font-size:30px;
-    margin-bottom:8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    font-size: 28px;
 }
 .ctrl-btn {
-    background:none;
-    border:none;
-    color:white;
-    cursor:pointer;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 4px;
 }
 
 /* PROGRESS */
 .progress {
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-size:12px;
-    color:#aaa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #aaa;
 }
 .progress input[type=range] {
-    flex:1;
-    max-width:65%;
-    accent-color:white;
+    flex: 1;
+    min-width: 0;
+    accent-color: white;
 }
 
 /* SPA VIEWS */
@@ -337,16 +380,16 @@ body {
 </div>
 
 <div class="mini-player hidden" id="mini-player">
-    <div class="mini-title" id="mini-title"></div>
-
+    <div class="mini-title-wrap">
+        <div class="mini-title" id="mini-title"></div>
+    </div>
     <div class="controls">
         <button class="ctrl-btn" id="repeat">🔁</button>
         <button class="ctrl-btn" id="prev">⏮</button>
-        <button class="ctrl-btn" id="play">▶</button>
+        <button class="ctrl-btn" id="play" aria-label="Старт/пауза">▶</button>
         <button class="ctrl-btn" id="next">⏭</button>
         <button class="ctrl-btn" id="mini-more">⋯</button>
     </div>
-
     <div class="progress">
         <span id="current">0:00</span>
         <input type="range" id="progress" value="0" min="0" step="0.1">
@@ -471,14 +514,21 @@ async function loadTracks(){
 
 function renderTracks(){
     trackListDiv.innerHTML="";
+    const titleLen = (s) => (s || "").length;
     tracks.forEach((t,i)=>{
         const div=document.createElement("div");
         div.className="track-item";
+        const name = (t.originalName || "").trim() || "Без названия";
+        const artist = (t.performer || "").trim();
+        const useMarquee = titleLen(name) > 22;
+        const titleHtml = useMarquee
+            ? `<div class="track-title-wrap marquee"><span class="track-title">${escapeHtml(name)}</span><span class="track-title" aria-hidden="true">${escapeHtml(name)}</span></div>`
+            : `<div class="track-title-wrap"><span class="track-title">${escapeHtml(name)}</span></div>`;
         div.innerHTML=`
             <span>${i+1}</span>
-            <div>
-                <div class="track-title">${t.originalName}</div>
-                <div class="track-artist">${t.performer||"Unknown"}</div>
+            <div class="track-title-cell">
+                ${titleHtml}
+                ${artist ? `<div class="track-artist">${escapeHtml(artist)}</div>` : ""}
             </div>
             <button class="play-btn">${(playbackQueue[currentIndex] && playbackQueue[currentIndex].id===t.id) && !audio.paused?"⏸":"▶"}</button>
             <button class="more-btn">⋯</button>
@@ -498,14 +548,24 @@ async function playTrack(i, queue){
     const track = playbackQueue[currentIndex];
     audio.src = await getStreamUrl(track.id);
     await audio.play();
-    miniTitle.innerText = track.originalName || track.filename || "Track";
-    playBtn.innerText = "⏸";
+    miniTitle.innerText = (track.originalName || track.filename || "Track").trim() || "Трек";
+    updateMiniPlayBtn();
     miniPlayer.classList.remove("hidden");
     renderTracks();
     updatePlaylistTrackButtons();
 }
 
-playBtn.onclick=()=>{audio.paused?audio.play():audio.pause();renderTracks();updatePlaylistTrackButtons();}
+function updateMiniPlayBtn() {
+    playBtn.innerText = audio.paused ? "▶" : "⏸";
+}
+playBtn.onclick=()=>{
+    if (audio.paused) audio.play(); else audio.pause();
+    updateMiniPlayBtn();
+    renderTracks();
+    updatePlaylistTrackButtons();
+}
+audio.onplay = () => updateMiniPlayBtn();
+audio.onpause = () => updateMiniPlayBtn();
 nextBtn.onclick=()=>currentIndex<playbackQueue.length-1&&playTrack(currentIndex+1, playbackQueue);
 prevBtn.onclick=()=>currentIndex>0&&playTrack(currentIndex-1, playbackQueue);
 repeatBtn.onclick=()=>{repeat=!repeat;audio.loop=repeat;repeatBtn.style.opacity=repeat?"1":"0.4";}
@@ -669,7 +729,7 @@ async function openPlaylistDetail(playlistId) {
                     <span>${i + 1}</span>
                     <div>
                         <div class="track-title">${escapeHtml(t.originalName || t.filename || "Без названия")}</div>
-                        <div class="track-artist">${escapeHtml(t.performer || "Unknown") || "Unknown"}</div>
+                        ${(t.performer || "").trim() ? `<div class="track-artist">${escapeHtml((t.performer || "").trim())}</div>` : ""}
                     </div>
                     <button class="play-btn">${i === currentIndex && !audio.paused ? "⏸" : "▶"}</button>
                     <button class="more-btn">⋯</button>
