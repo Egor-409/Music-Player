@@ -91,7 +91,7 @@ private void sendMiniAppButton(Long chatId) {
     webAppBtn.setText("🎧 Открыть плеер");
 
     WebAppInfo webAppInfo = new WebAppInfo();
-    webAppInfo.setUrl("https://telegram-music-player-uh5o.onrender.com/miniapp");
+    webAppInfo.setUrl("https://telegram-music-player-uh5o.onrender.com/miniapp?v=2");
 
     webAppBtn.setWebApp(webAppInfo);
 
