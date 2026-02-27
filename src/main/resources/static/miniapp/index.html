@@ -246,6 +246,18 @@ body { min-height: 100vh; }
 .ctrl-btn:active {
     color: #e0e0e0 !important;
 }
+.ctrl-btn svg,
+.play-btn svg,
+.more-btn svg,
+.playlist-more-btn svg {
+    display: block;
+    fill: currentColor;
+    pointer-events: none;
+}
+.ctrl-btn svg { width: 28px; height: 28px; }
+.play-btn svg { width: 18px; height: 18px; }
+.more-btn svg { width: 20px; height: 20px; }
+.playlist-more-btn svg { width: 20px; height: 20px; }
 
 /* PROGRESS */
 .progress {
@@ -463,11 +475,11 @@ body { min-height: 100vh; }
         <div class="mini-title" id="mini-title"></div>
     </div>
     <div class="controls">
-        <button class="ctrl-btn" id="repeat">🔁</button>
-        <button class="ctrl-btn" id="prev">⏮</button>
-        <button class="ctrl-btn" id="play" aria-label="Старт/пауза">▶</button>
-        <button class="ctrl-btn" id="next">⏭</button>
-        <button class="ctrl-btn" id="mini-more">⋯</button>
+        <button class="ctrl-btn" id="repeat" aria-label="Повтор"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg></button>
+        <button class="ctrl-btn" id="prev" aria-label="Назад"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z"/></svg></button>
+        <button class="ctrl-btn" id="play" aria-label="Старт/пауза"><span id="play-btn-icon"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5z"/></svg></span></button>
+        <button class="ctrl-btn" id="next" aria-label="Вперёд"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zm9.5-6l8.5 6V6l-8.5 6z"/></svg></button>
+        <button class="ctrl-btn" id="mini-more" aria-label="Ещё"><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg></button>
     </div>
     <div class="progress">
         <span id="current">0:00</span>
@@ -511,6 +523,10 @@ tg.expand();
     r.style.setProperty("--tg-theme-button-text-color", "#000000", "important");
     r.style.setProperty("--tg-theme-secondary-bg-color", "#1b1b1b", "important");
 })();
+
+var iconPlay = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5z"/></svg>';
+var iconPause = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>';
+var iconMore = '<svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>';
 
 function forceMonochromeIcons() {
     document.querySelectorAll(".ctrl-btn").forEach(function(el) {
@@ -637,14 +653,15 @@ function renderTracks(){
         const titleHtml = useMarquee
             ? `<div class="track-title-wrap marquee"><span class="track-title">${escapeHtml(name)}</span><span class="track-title" aria-hidden="true">${escapeHtml(name)}</span></div>`
             : `<div class="track-title-wrap"><span class="track-title">${escapeHtml(name)}</span></div>`;
+        var isPlaying = (playbackQueue[currentIndex] && playbackQueue[currentIndex].id===t.id) && !audio.paused;
         div.innerHTML=`
             <span>${i+1}</span>
             <div class="track-title-cell">
                 ${titleHtml}
                 ${artist ? `<div class="track-artist">${escapeHtml(artist)}</div>` : ""}
             </div>
-            <button class="play-btn">${(playbackQueue[currentIndex] && playbackQueue[currentIndex].id===t.id) && !audio.paused?"⏸":"▶"}</button>
-            <button class="more-btn">⋯</button>
+            <button class="play-btn">${isPlaying ? iconPause : iconPlay}</button>
+            <button class="more-btn">${iconMore}</button>
         `;
         div.onclick=()=>playTrack(i);
         div.querySelector(".play-btn").onclick=e=>{e.stopPropagation();playTrack(i);}
@@ -672,7 +689,8 @@ async function playTrack(i, queue){
 }
 
 function updateMiniPlayBtn() {
-    playBtn.innerText = audio.paused ? "▶" : "⏸";
+    var icon = document.getElementById("play-btn-icon");
+    if (icon) icon.innerHTML = audio.paused ? iconPlay : iconPause;
 }
 playBtn.onclick=()=>{
     if (audio.paused) audio.play(); else audio.pause();
@@ -785,7 +803,7 @@ function renderPlaylists(playlists) {
         ${playlists.map(p => `
             <div class="playlist-card" data-playlist-id="${p.id}" data-playlist-name="${escapeHtml(p.name)}">
                 <span class="playlist-card-content">${escapeHtml(p.name)}</span>
-                <button class="playlist-more-btn" data-playlist-id="${p.id}" aria-label="Меню">⋯</button>
+                <button class="playlist-more-btn" data-playlist-id="${p.id}" aria-label="Меню">${iconMore}</button>
             </div>
         `).join("")}
     `;
@@ -840,17 +858,20 @@ async function openPlaylistDetail(playlistId) {
             playlistTrackList.innerHTML = '<div class="playlist-empty">Пусто</div>';
         } else {
             currentPlaylistTracks = list;
-            playlistTrackList.innerHTML = list.map((t, i) => `
+            playlistTrackList.innerHTML = list.map((t, i) => {
+                var isPlaying = i === currentIndex && !audio.paused;
+                return `
                 <div class="track-item" data-track-idx="${i}">
                     <span>${i + 1}</span>
                     <div>
                         <div class="track-title">${escapeHtml(t.originalName || t.filename || "Без названия")}</div>
                         ${(t.performer || "").trim() ? `<div class="track-artist">${escapeHtml((t.performer || "").trim())}</div>` : ""}
                     </div>
-                    <button class="play-btn">${i === currentIndex && !audio.paused ? "⏸" : "▶"}</button>
-                    <button class="more-btn">⋯</button>
+                    <button class="play-btn">${isPlaying ? iconPause : iconPlay}</button>
+                    <button class="more-btn">${iconMore}</button>
                 </div>
-            `).join("");
+            `;
+            }).join("");
             playlistTrackList.querySelectorAll(".track-item").forEach((row, i) => {
                 const trackData = list[i];
                 row.onclick = () => playPlaylistTrack(list, i);
@@ -880,7 +901,7 @@ function updatePlaylistTrackButtons() {
     playlistTrackList.querySelectorAll(".play-btn").forEach((btn, i) => {
         const playingId = playbackQueue[currentIndex] ? playbackQueue[currentIndex].id : null;
         const rowTrack = currentPlaylistTracks[i];
-        btn.textContent = (playingId && rowTrack && rowTrack.id === playingId && !audio.paused) ? "⏸" : "▶";
+        btn.innerHTML = (playingId && rowTrack && rowTrack.id === playingId && !audio.paused) ? iconPause : iconPlay;
     });
 }
 
