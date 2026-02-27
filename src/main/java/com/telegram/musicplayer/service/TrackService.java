@@ -25,6 +25,7 @@ public class TrackService {
     // ---------- СОХРАНЕНИЕ ----------
     public Track saveTrack(Long telegramUserId,
                            String originalName,
+                           String performer,
                            String filename,
                            String telegramFileId) {
 
@@ -36,9 +37,9 @@ public class TrackService {
                 });
 
         Track track = new Track();
-       track.setUserId(telegramUserId);
-
+        track.setUserId(telegramUserId);
         track.setOriginalName(originalName);
+        track.setPerformer(performer);
         track.setFilename(filename);
         track.setTelegramFileId(telegramFileId);
 

@@ -20,8 +20,11 @@ public class Track {
     // Название файла на сервере
     private String filename;
 
-    // Исходное название файла
+    // Исходное название трека (title или имя файла)
     private String originalName;
+
+    // Исполнитель (для Audio из Telegram)
+    private String performer;
 
     // file_id Telegram
     private String telegramFileId;

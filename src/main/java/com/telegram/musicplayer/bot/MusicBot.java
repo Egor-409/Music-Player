@@ -119,7 +119,17 @@ private void sendMiniAppButton(Long chatId) {
         Document doc = msg.getDocument();
 
         String fileId = audio != null ? audio.getFileId() : doc.getFileId();
-        String originalName = audio != null ? audio.getFileName() : doc.getFileName();
+
+        // Для аудио берём красивое название и исполнителя, а не tmp-файл
+        String title = null;
+        String performer = null;
+        if (audio != null) {
+            title = audio.getTitle();
+            performer = audio.getPerformer();
+        }
+        String originalName = title != null && !title.isBlank()
+                ? title
+                : (audio != null ? audio.getFileName() : doc.getFileName());
 
         try {
             GetFile getFile = new GetFile(fileId);
@@ -132,7 +142,7 @@ private void sendMiniAppButton(Long chatId) {
 
             InputStream input = new URL(fileUrl).openStream();
 
-            String savedName = System.currentTimeMillis() + "_" + originalName;
+            String savedName = System.currentTimeMillis() + "_" + (audio != null ? audio.getFileName() : doc.getFileName());
             File localFile = new File("uploads/" + savedName);
             localFile.getParentFile().mkdirs();
 
@@ -143,6 +153,7 @@ private void sendMiniAppButton(Long chatId) {
             trackService.saveTrack(
                     telegramId,
                     originalName,
+                    performer,
                     savedName,
                     fileId
             );
