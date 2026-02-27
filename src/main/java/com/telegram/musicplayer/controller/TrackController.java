@@ -1,7 +1,6 @@
 package com.telegram.musicplayer.controller;
 
 import com.telegram.musicplayer.model.Track;
-import com.telegram.musicplayer.model.TelegramUser;
 import com.telegram.musicplayer.service.TrackService;
 import com.telegram.musicplayer.service.TelegramAuthService;
 import com.telegram.musicplayer.service.TelegramFileService;
@@ -28,7 +27,8 @@ public class TrackController {
             @RequestParam String filename,
             @RequestParam String telegramFileId
     ) {
-        return trackService.saveTrack(userId, originalName, filename, telegramFileId);
+        // Для загрузки через REST у нас может не быть информации об исполнителе
+        return trackService.saveTrack(userId, originalName, null, filename, telegramFileId);
     }
 
     // ===================== MINI APP: СПИСОК ТРЕКОВ =====================
