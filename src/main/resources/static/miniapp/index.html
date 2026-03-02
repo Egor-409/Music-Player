@@ -606,6 +606,7 @@ let pendingTrackIdToAdd = null;
 let playbackQueue = [];
 // currently opened playlist id in the playlist detail view
 let currentPlaylistId = null;
+let playlistsLoadedOnce = false;
 
 const linkCache = new Map();
 
@@ -792,15 +793,19 @@ function format(t){
     return `${m}:${s}`;
 }
 async function loadPlaylists() {
-    playlistsGrid.innerHTML = '<div class="playlist-loading">Загрузка плейлистов...</div>';
+    if (!playlistsLoadedOnce) {
+        playlistsGrid.innerHTML = '<div class="playlist-loading">Загрузка плейлистов...</div>';
+    }
     try {
         const r = await fetch(`${apiBase}/api/playlists`, {
             headers: { "X-TG-INIT-DATA": tg.initData }
         });
         const playlists = await r.json();
         renderPlaylists(playlists || []);
+        playlistsLoadedOnce = true;
     } catch (e) {
         renderPlaylists([]);
+        playlistsLoadedOnce = true;
     }
 }
 
