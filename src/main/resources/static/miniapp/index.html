@@ -386,6 +386,8 @@ body { min-height: 100vh; }
     margin-bottom:12px;
     font-size:14px;
 }
+.add-track-banner.hidden { display:none !important; }
+.playlist-loading { color:#888; padding:24px; text-align:center; }
 
 #audio-player { display:none; }
 
@@ -472,10 +474,7 @@ body { min-height: 100vh; }
         <!-- PLAYLISTS -->
         <div id="playlists-view" class="view">
             <div id="add-track-banner" class="add-track-banner hidden">Выберите плейлист для добавления трека</div>
-            <div id="playlists-grid" class="playlists-grid">
-                <div class="playlist-card" id="create-playlist" role="button" tabindex="0">➕ Новый</div>
-                <div class="playlist-card">❤️ Избранное</div>
-            </div>
+            <div id="playlists-grid" class="playlists-grid"></div>
             <div id="playlist-detail" class="playlist-detail">
                 <button class="playlist-back-btn" id="playlist-back-btn">← Назад</button>
                 <div class="playlist-detail-title" id="playlist-detail-title"></div>
@@ -619,6 +618,8 @@ const playlistsGrid = document.getElementById("playlists-grid");
 const playlistDetail = document.getElementById("playlist-detail");
 const playlistDetailTitle = document.getElementById("playlist-detail-title");
 const playlistTrackList = document.getElementById("playlist-track-list");
+
+document.getElementById("add-track-banner").classList.add("hidden");
 
 btnLibrary.onclick = () => switchView("library");
 btnPlaylists.onclick = () => switchView("playlists");
@@ -791,6 +792,7 @@ function format(t){
     return `${m}:${s}`;
 }
 async function loadPlaylists() {
+    playlistsGrid.innerHTML = '<div class="playlist-loading">Загрузка плейлистов...</div>';
     try {
         const r = await fetch(`${apiBase}/api/playlists`, {
             headers: { "X-TG-INIT-DATA": tg.initData }
